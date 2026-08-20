@@ -79,6 +79,7 @@ export type Database = {
           description: string | null
           id: string
           platform: string
+          storage_path: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -92,6 +93,7 @@ export type Database = {
           description?: string | null
           id?: string
           platform?: string
+          storage_path?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -105,6 +107,7 @@ export type Database = {
           description?: string | null
           id?: string
           platform?: string
+          storage_path?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
