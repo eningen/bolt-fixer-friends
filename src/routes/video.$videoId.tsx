@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { videoDetailQuery, videoLikesQuery } from "@/lib/queries";
 import { formatRelativeDate, formatViews, parseVideoUrl } from "@/lib/video";
+import { useMediaUrl } from "@/lib/storage";
 import { Header } from "@/components/Header";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
