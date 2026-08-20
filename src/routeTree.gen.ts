@@ -14,6 +14,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +42,16 @@ const UploadRoute = UploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoVideoIdRoute = VideoVideoIdRouteImport.update({
+  id: '/video/$videoId',
+  path: '/video/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof RankingRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/u/$username': typeof UUsernameRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/ranking': typeof RankingRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/u/$username': typeof UUsernameRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +78,37 @@ export interface FileRoutesById {
   '/ranking': typeof RankingRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
+  '/u/$username': typeof UUsernameRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/ranking' | '/search' | '/upload'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/ranking'
+    | '/search'
+    | '/upload'
+    | '/u/$username'
+    | '/video/$videoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/ranking' | '/search' | '/upload'
-  id: '__root__' | '/' | '/auth' | '/ranking' | '/search' | '/upload'
+  to:
+    | '/'
+    | '/auth'
+    | '/ranking'
+    | '/search'
+    | '/upload'
+    | '/u/$username'
+    | '/video/$videoId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/ranking'
+    | '/search'
+    | '/upload'
+    | '/u/$username'
+    | '/video/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +117,8 @@ export interface RootRouteChildren {
   RankingRoute: typeof RankingRoute
   SearchRoute: typeof SearchRoute
   UploadRoute: typeof UploadRoute
+  UUsernameRoute: typeof UUsernameRoute
+  VideoVideoIdRoute: typeof VideoVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +158,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video/$videoId': {
+      id: '/video/$videoId'
+      path: '/video/$videoId'
+      fullPath: '/video/$videoId'
+      preLoaderRoute: typeof VideoVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +181,8 @@ const rootRouteChildren: RootRouteChildren = {
   RankingRoute: RankingRoute,
   SearchRoute: SearchRoute,
   UploadRoute: UploadRoute,
+  UUsernameRoute: UUsernameRoute,
+  VideoVideoIdRoute: VideoVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
