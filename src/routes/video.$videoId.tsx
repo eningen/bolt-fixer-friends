@@ -101,8 +101,7 @@ function VideoDetailPage() {
               )}
             </div>
 
-              )}
-            </div>
+
 
             <h1 className="mt-4 text-xl font-bold leading-snug">{video.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
