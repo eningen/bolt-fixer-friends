@@ -10,6 +10,7 @@ export type VideoRow = {
   platform: string;
   youtube_id: string | null;
   thumbnail_url: string | null;
+  storage_path: string | null;
   views: number;
   created_at: string;
   profile: {
@@ -20,7 +21,8 @@ export type VideoRow = {
 };
 
 const VIDEO_SELECT =
-  "id,user_id,title,description,video_url,platform,youtube_id,thumbnail_url,views,created_at,profile:profiles!videos_user_id_profiles_fkey(username,display_name,avatar_url)";
+  "id,user_id,title,description,video_url,platform,youtube_id,thumbnail_url,storage_path,views,created_at,profile:profiles!videos_user_id_profiles_fkey(username,display_name,avatar_url)";
+
 
 export const latestVideosQuery = queryOptions({
   queryKey: ["videos", "latest"],

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { videoDetailQuery, videoLikesQuery } from "@/lib/queries";
 import { formatRelativeDate, formatViews, parseVideoUrl } from "@/lib/video";
+import { useMediaUrl } from "@/lib/storage";
 import { Header } from "@/components/Header";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ function VideoDetailPage() {
   });
 
   const embedUrl = video ? parseVideoUrl(video.video_url)?.embedUrl : null;
+  const fileUrl = useMediaUrl(video?.storage_path ?? null);
 
   return (
     <div className="min-h-screen">
@@ -79,7 +81,13 @@ function VideoDetailPage() {
         ) : (
           <>
             <div className="aspect-video w-full overflow-hidden rounded-xl bg-surface-strong">
-              {embedUrl ? (
+              {video.storage_path ? (
+                fileUrl ? (
+                  <video src={fileUrl} controls playsInline className="size-full" />
+                ) : (
+                  <div className="size-full animate-pulse" />
+                )
+              ) : embedUrl ? (
                 <iframe
                   src={embedUrl}
                   title={video.title}
@@ -93,6 +101,8 @@ function VideoDetailPage() {
                 </div>
               )}
             </div>
+
+
 
             <h1 className="mt-4 text-xl font-bold leading-snug">{video.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">

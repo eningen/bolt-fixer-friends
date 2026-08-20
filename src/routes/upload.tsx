@@ -1,35 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
+import { Film, Link2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { parseVideoUrl } from "@/lib/video";
+import { MAX_VIDEO_BYTES, uploadVideoFile } from "@/lib/storage";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const formSchema = z.object({
+const metaSchema = z.object({
   title: z
     .string()
     .trim()
     .min(1, { message: "タイトルを入力してください" })
     .max(100, { message: "タイトルは100文字以内にしてください" }),
   description: z.string().trim().max(1000, { message: "説明は1000文字以内にしてください" }),
-  url: z.string().trim().min(1, { message: "動画のURLを入力してください" }),
 });
 
 export const Route = createFileRoute("/upload")({
   head: () => ({
     meta: [
       { title: "動画を投稿｜Stickman video" },
-      { name: "description", content: "YouTubeのURLを貼るだけで棒人間動画を投稿できます。" },
+      {
+        name: "description",
+        content:
+          "YouTubeのURLを貼るか、フォトライブラリの動画ファイルを直接アップロードして棒人間動画を投稿できます。",
+      },
       { property: "og:title", content: "動画を投稿｜Stickman video" },
-      { property: "og:description", content: "YouTubeのURLを貼るだけで棒人間動画を投稿。" },
+      {
+        property: "og:description",
+        content: "URLでも端末の動画ファイルでも、棒人間動画をかんたんに投稿。",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: UploadPage,
@@ -39,9 +50,11 @@ function UploadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading } = useAuth();
+  const [mode, setMode] = useState<"file" | "url">("file");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -49,46 +62,99 @@ function UploadPage() {
   }, [loading, user, navigate]);
 
   const parsed = parseVideoUrl(url);
+  const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [filePreview]);
+
+  const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0] ?? null;
+    if (!picked) {
+      setFile(null);
+      return;
+    }
+    if (!picked.type.startsWith("video/")) {
+      toast.error("動画ファイルを選択してください");
+      return;
+    }
+    if (picked.size > MAX_VIDEO_BYTES) {
+      toast.error("動画は200MB以内にしてください");
+      return;
+    }
+    setFile(picked);
+    if (!title.trim()) setTitle(picked.name.replace(/\.[^.]+$/, "").slice(0, 100));
+  };
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!user) return;
+    if (!user || busy) return;
 
-    const values = formSchema.safeParse({ title, description, url });
-    if (!values.success) {
-      toast.error(values.error.issues[0]?.message ?? "入力内容を確認してください");
-      return;
-    }
-    const video = parseVideoUrl(values.data.url);
-    if (!video) {
-      toast.error("YouTubeのURLを入力してください");
+    const meta = metaSchema.safeParse({ title, description });
+    if (!meta.success) {
+      toast.error(meta.error.issues[0]?.message ?? "入力内容を確認してください");
       return;
     }
 
     setBusy(true);
-    const { data, error } = await supabase
-      .from("videos")
-      .insert({
-        user_id: user.id,
-        title: values.data.title,
-        description: values.data.description || null,
-        video_url: video.normalizedUrl,
-        platform: video.platform,
-        youtube_id: video.youtubeId,
-        thumbnail_url: video.thumbnailUrl,
-      })
-      .select("id")
-      .single();
-    setBusy(false);
+    try {
+      let insertData: {
+        video_url: string;
+        platform: string;
+        youtube_id: string | null;
+        thumbnail_url: string | null;
+        storage_path: string | null;
+      };
 
-    if (error) {
+      if (mode === "file") {
+        if (!file) {
+          toast.error("動画ファイルを選択してください");
+          return;
+        }
+        const { videoPath, thumbnailPath } = await uploadVideoFile(file, user.id);
+        insertData = {
+          video_url: videoPath,
+          platform: "upload",
+          youtube_id: null,
+          thumbnail_url: thumbnailPath,
+          storage_path: videoPath,
+        };
+      } else {
+        const video = parseVideoUrl(url);
+        if (!video) {
+          toast.error("YouTubeのURLを入力してください");
+          return;
+        }
+        insertData = {
+          video_url: video.normalizedUrl,
+          platform: video.platform,
+          youtube_id: video.youtubeId,
+          thumbnail_url: video.thumbnailUrl,
+          storage_path: null,
+        };
+      }
+
+      const { data, error } = await supabase
+        .from("videos")
+        .insert({
+          user_id: user.id,
+          title: meta.data.title,
+          description: meta.data.description || null,
+          ...insertData,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+
+      await queryClient.invalidateQueries({ queryKey: ["videos"] });
+      toast.success("動画を投稿しました");
+      void navigate({ to: "/video/$videoId", params: { videoId: data.id } });
+    } catch {
       toast.error("投稿に失敗しました。もう一度お試しください。");
-      return;
+    } finally {
+      setBusy(false);
     }
-
-    await queryClient.invalidateQueries({ queryKey: ["videos"] });
-    toast.success("動画を投稿しました");
-    void navigate({ to: "/video/$videoId", params: { videoId: data.id } });
   };
 
   return (
@@ -97,31 +163,66 @@ function UploadPage() {
       <main className="mx-auto max-w-2xl px-4 py-8">
         <h1 className="text-2xl font-extrabold">動画を投稿</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          YouTubeの動画URLを貼り付けて、棒人間動画をシェアしましょう。
+          フォトライブラリから動画を選ぶか、YouTubeのURLを貼り付けて投稿できます。
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="url">動画URL</Label>
-            <Input
-              id="url"
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              maxLength={300}
-            />
-            {url.trim() && !parsed ? (
-              <p className="text-xs text-destructive">YouTubeのURLとして認識できませんでした</p>
-            ) : null}
-          </div>
+          <Tabs value={mode} onValueChange={(value) => setMode(value as "file" | "url")}>
+            <TabsList className="w-full">
+              <TabsTrigger value="file" className="flex-1">
+                <Film className="size-4" />
+                ファイルから
+              </TabsTrigger>
+              <TabsTrigger value="url" className="flex-1">
+                <Link2 className="size-4" />
+                URLから
+              </TabsTrigger>
+            </TabsList>
 
-          {parsed?.thumbnailUrl ? (
-            <img
-              src={parsed.thumbnailUrl}
-              alt="サムネイルのプレビュー"
-              className="aspect-video w-full rounded-lg object-cover"
-            />
-          ) : null}
+            <TabsContent value="file" className="mt-4 space-y-3">
+              <Label htmlFor="video-file">動画ファイル（最大200MB）</Label>
+              <Input
+                id="video-file"
+                type="file"
+                accept="video/*"
+                onChange={onPickFile}
+                className="cursor-pointer file:mr-3 file:text-sm"
+              />
+              {filePreview ? (
+                <video
+                  src={filePreview}
+                  controls
+                  playsInline
+                  className="aspect-video w-full rounded-lg bg-surface-strong"
+                />
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  スマートフォンではフォトライブラリから直接選択できます。
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="url" className="mt-4 space-y-3">
+              <Label htmlFor="url">動画URL</Label>
+              <Input
+                id="url"
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                maxLength={300}
+              />
+              {url.trim() && !parsed ? (
+                <p className="text-xs text-destructive">YouTubeのURLとして認識できませんでした</p>
+              ) : null}
+              {parsed?.thumbnailUrl ? (
+                <img
+                  src={parsed.thumbnailUrl}
+                  alt="サムネイルのプレビュー"
+                  className="aspect-video w-full rounded-lg object-cover"
+                />
+              ) : null}
+            </TabsContent>
+          </Tabs>
 
           <div className="space-y-2">
             <Label htmlFor="title">タイトル</Label>
@@ -147,7 +248,8 @@ function UploadPage() {
           </div>
 
           <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
-            投稿する
+            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+            {busy ? "アップロード中…" : "投稿する"}
           </Button>
         </form>
       </main>

@@ -2,10 +2,13 @@ import { Link } from "@tanstack/react-router";
 
 import type { VideoRow } from "@/lib/queries";
 import { formatRelativeDate, formatViews } from "@/lib/video";
+import { useMediaUrl } from "@/lib/storage";
 import { StickmanMark } from "@/components/StickmanMark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
+  const thumbnailUrl = useMediaUrl(video.thumbnail_url);
+
   return (
     <article className="group">
       <Link
@@ -14,9 +17,9 @@ export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
         className="relative block overflow-hidden rounded-lg bg-surface-strong"
       >
         <div className="aspect-video w-full">
-          {video.thumbnail_url ? (
+          {thumbnailUrl ? (
             <img
-              src={video.thumbnail_url}
+              src={thumbnailUrl}
               alt={video.title}
               loading="lazy"
               className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -27,6 +30,7 @@ export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
             </div>
           )}
         </div>
+
         {rank ? (
           <span
             className="absolute left-2 top-2 flex size-8 items-center justify-center rounded-full text-sm font-bold text-background shadow-card"
