@@ -64,6 +64,7 @@ function VideoDetailPage() {
   });
 
   const embedUrl = video ? parseVideoUrl(video.video_url)?.embedUrl : null;
+  const fileUrl = useMediaUrl(video?.storage_path ?? null);
 
   return (
     <div className="min-h-screen">
@@ -79,7 +80,13 @@ function VideoDetailPage() {
         ) : (
           <>
             <div className="aspect-video w-full overflow-hidden rounded-xl bg-surface-strong">
-              {embedUrl ? (
+              {video.storage_path ? (
+                fileUrl ? (
+                  <video src={fileUrl} controls playsInline className="size-full" />
+                ) : (
+                  <div className="size-full animate-pulse" />
+                )
+              ) : embedUrl ? (
                 <iframe
                   src={embedUrl}
                   title={video.title}
@@ -91,6 +98,9 @@ function VideoDetailPage() {
                 <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
                   再生できない動画です
                 </div>
+              )}
+            </div>
+
               )}
             </div>
 
