@@ -5,6 +5,7 @@ export type ParsedVideo = {
   youtubeId: string | null;
   embedUrl: string | null;
   thumbnailUrl: string | null;
+  normalizedUrl: string;
 };
 
 const YT_PATTERNS = [
@@ -15,34 +16,26 @@ const YT_PATTERNS = [
   /(?:youtube\.com\/live\/)([A-Za-z0-9_-]{11})/,
 ];
 
-export function parseVideoUrl(rawUrl: string): ParsedVideo {
+export function parseVideoUrl(rawUrl: string): ParsedVideo | null {
   const url = rawUrl.trim();
+  if (!url) return null;
 
-  for (const pattern of YT_PATTERNS) {
-    const match = url.match(pattern);
-    if (match?.[1]) {
-      const id = match[1];
-      return {
-        platform: "youtube",
-        youtubeId: id,
-        embedUrl: `https://www.youtube.com/embed/${id}`,
-        thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-      };
-    }
-  }
+  const ytId = YT_PATTERNS.map((pattern) => url.match(pattern)?.[1]).find(Boolean)
+    ?? (/^[A-Za-z0-9_-]{11}$/.test(url) ? url : undefined);
 
-  // 11桁のIDだけを貼られたケース
-  if (/^[A-Za-z0-9_-]{11}$/.test(url)) {
+  if (ytId) {
     return {
       platform: "youtube",
-      youtubeId: url,
-      embedUrl: `https://www.youtube.com/embed/${url}`,
-      thumbnailUrl: `https://i.ytimg.com/vi/${url}/hqdefault.jpg`,
+      youtubeId: ytId,
+      embedUrl: `https://www.youtube.com/embed/${ytId}`,
+      thumbnailUrl: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+      normalizedUrl: `https://www.youtube.com/watch?v=${ytId}`,
     };
   }
 
-  return { platform: "other", youtubeId: null, embedUrl: null, thumbnailUrl: null };
+  return null;
 }
+
 
 export function isValidHttpUrl(value: string): boolean {
   try {
