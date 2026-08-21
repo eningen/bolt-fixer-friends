@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart } from "lucide-react";
@@ -35,9 +35,36 @@ function VideoDetailPage() {
   const { data: video, isPending } = useQuery(videoDetailQuery(videoId));
   const { data: likes } = useQuery(videoLikesQuery(videoId));
 
+  // 10秒以上再生されたら再生回数を1増やす
+  const counted = useRef(false);
+  const watched = useRef(0);
+  const queryClientRef = queryClient;
+
   useEffect(() => {
-    void supabase.rpc("increment_video_views", { _video_id: videoId });
+    counted.current = false;
+    watched.current = 0;
   }, [videoId]);
+
+  const countView = useCallback(() => {
+    if (counted.current) return;
+    counted.current = true;
+    void supabase.rpc("increment_video_views", { _video_id: videoId }).then(() => {
+      void queryClientRef.invalidateQueries({ queryKey: ["video", videoId] });
+    });
+  }, [queryClientRef, videoId]);
+
+  const onTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    watched.current = Math.max(watched.current, event.currentTarget.currentTime);
+    if (watched.current >= 10) countView();
+  };
+
+  // YouTube などの埋め込みは再生位置を取れないため、表示から10秒後にカウント
+  const isEmbed = Boolean(video && !video.storage_path);
+  useEffect(() => {
+    if (!isEmbed) return;
+    const timer = setTimeout(countView, 10_000);
+    return () => clearTimeout(timer);
+  }, [countView, isEmbed]);
 
   const liked = Boolean(user && likes?.likedBy.includes(user.id));
 
@@ -83,7 +110,13 @@ function VideoDetailPage() {
             <div className="aspect-video w-full overflow-hidden rounded-xl bg-surface-strong">
               {video.storage_path ? (
                 fileUrl ? (
-                  <video src={fileUrl} controls playsInline className="size-full" />
+                  <video
+                    src={fileUrl}
+                    controls
+                    playsInline
+                    onTimeUpdate={onTimeUpdate}
+                    className="size-full"
+                  />
                 ) : (
                   <div className="size-full animate-pulse" />
                 )
