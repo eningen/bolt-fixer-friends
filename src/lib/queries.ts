@@ -156,3 +156,20 @@ export const myProfileQuery = (userId: string | undefined) =>
       return data;
     },
   });
+
+export function channelSubscribersQuery(channelId: string | undefined) {
+  return queryOptions({
+    queryKey: ["channel-subscribers", channelId],
+    enabled: Boolean(channelId),
+    queryFn: async (): Promise<{ subscriber_id: string; created_at: string }[]> => {
+      if (!channelId) return [];
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("subscriber_id,created_at")
+        .eq("channel_id", channelId)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
