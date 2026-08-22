@@ -19,7 +19,7 @@ export function SideNav() {
     { label: t("search"), icon: Search, to: "/search", match: (p) => p.startsWith("/search") },
     { label: t("ranking"), icon: Trophy, to: "/ranking", match: (p) => p.startsWith("/ranking") },
     { label: t("upload"), icon: Upload, to: "/upload", match: (p) => p.startsWith("/upload") },
-    profile ? { label: t("myPage"), icon: UserRound, to: "/u/$username", params: { username: profile.username }, match: (p) => p === /u/${profile.username} } : { label: t("login"), icon: UserRound, to: "/auth", match: (p) => p.startsWith("/auth") },
+    profile ? { label: t("myPage"), icon: UserRound, to: "/u/$username", params: { username: profile.username }, match: (p) => p === `/u/${profile.username}` } : { label: t("login"), icon: UserRound, to: "/auth", match: (p) => p.startsWith("/auth") },
   ];
   return <>
     <nav aria-label={t("settings")} className="fixed left-0 top-14 z-40 hidden h-[calc(100vh-3.5rem)] w-20 flex-col items-center gap-1 border-r border-border bg-background py-3 md:flex">
