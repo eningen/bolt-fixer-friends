@@ -6,6 +6,7 @@ type TranslationKey = keyof typeof translations.ja;
 
 const translations = {
   ja: {
+    home: "ホーム",
     searchVideos: "動画を検索",
     search: "検索",
     ranking: "ランキング",
@@ -22,6 +23,7 @@ const translations = {
     logoutDone: "ログアウトしました",
   },
   en: {
+    home: "Home",
     searchVideos: "Search videos",
     search: "Search",
     ranking: "Ranking",
