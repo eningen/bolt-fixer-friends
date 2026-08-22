@@ -173,3 +173,82 @@ export function channelSubscribersQuery(channelId: string | undefined) {
     },
   });
 }
+
+export type CommentRow = {
+  id: string;
+  video_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  profile: {
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+};
+
+export function videoCommentsQuery(videoId: string) {
+  return queryOptions({
+    queryKey: ["video", videoId, "comments"],
+    queryFn: async (): Promise<CommentRow[]> => {
+      const { data, error } = await supabase
+        .from("comments")
+        .select(
+          "id,video_id,user_id,body,created_at,profile:profiles!comments_user_id_fkey(username,display_name,avatar_url)",
+        )
+        .eq("video_id", videoId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as CommentRow[];
+    },
+  });
+}
+
+export function savedVideosQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["saved-videos", userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<{ videoId: string; video: VideoRow | null }[]> => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("saved_videos")
+        .select(`video_id,created_at,video:videos!saved_videos_video_id_fkey(${VIDEO_SELECT})`)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return ((data ?? []) as unknown as { video_id: string; video: VideoRow | null }[]).map(
+        (row) => ({ videoId: row.video_id, video: row.video }),
+      );
+    },
+  });
+}
+
+export type NotificationRow = {
+  id: string;
+  type: "like" | "comment" | "subscribe" | "new_video";
+  read: boolean;
+  created_at: string;
+  video_id: string | null;
+  actor: { username: string; display_name: string; avatar_url: string | null } | null;
+  video: { id: string; title: string } | null;
+};
+
+export function notificationsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["notifications", userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<NotificationRow[]> => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("notifications")
+        .select(
+          "id,type,read,created_at,video_id,actor:profiles!notifications_actor_id_fkey(username,display_name,avatar_url),video:videos!notifications_video_id_fkey(id,title)",
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as unknown as NotificationRow[];
+    },
+  });
+}
