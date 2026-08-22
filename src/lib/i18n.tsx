@@ -41,21 +41,35 @@ const translations = {
   },
 } as const;
 
+const fallbackLanguageContext = {
+  language: "ja" as Language,
+  setLanguage: () => undefined,
+  t: (key: TranslationKey) => translations.ja[key],
+};
+
 const LanguageContext = createContext<{
   language: Language;
   setLanguage: (language: Language) => void;
   t: (key: TranslationKey) => string;
-} | null>(null);
+} | null>(fallbackLanguageContext);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window === "undefined") return "ja";
-    return window.localStorage.getItem("stickman-language") === "en" ? "en" : "ja";
+    try {
+      return window.localStorage.getItem("stickman-language") === "en" ? "en" : "ja";
+    } catch {
+      return "ja";
+    }
   });
 
   const setLanguage = (next: Language) => {
     setLanguageState(next);
-    window.localStorage.setItem("stickman-language", next);
+    try {
+      window.localStorage.setItem("stickman-language", next);
+    } catch {
+      // Continue working when browser storage is unavailable.
+    }
   };
 
   useEffect(() => {
@@ -72,7 +86,5 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLanguage() {
-  const context = useContext(LanguageContext);
-  if (!context) throw new Error("useLanguage must be used within LanguageProvider");
-  return context;
+  return useContext(LanguageContext);
 }
