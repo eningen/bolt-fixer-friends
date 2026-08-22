@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
@@ -30,6 +31,11 @@ const AuthRoute = AuthRouteImport.update({
 const RankingRoute = RankingRouteImport.update({
   id: '/ranking',
   path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedRoute = SavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/ranking': typeof RankingRoute
+  '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ranking'
+    | '/saved'
     | '/search'
     | '/upload'
     | '/u/$username'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ranking'
+    | '/saved'
     | '/search'
     | '/upload'
     | '/u/$username'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/ranking'
+    | '/saved'
     | '/search'
     | '/upload'
     | '/u/$username'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   RankingRoute: typeof RankingRoute
+  SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
   UploadRoute: typeof UploadRoute
   UUsernameRoute: typeof UUsernameRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/ranking'
       fullPath: '/ranking'
       preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved': {
+      id: '/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof SavedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   RankingRoute: RankingRoute,
+  SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
   UploadRoute: UploadRoute,
   UUsernameRoute: UUsernameRoute,
