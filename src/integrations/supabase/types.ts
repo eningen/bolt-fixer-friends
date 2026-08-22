@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       likes: {
         Row: {
           created_at: string
@@ -36,6 +78,61 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "likes_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          id: string
+          read: boolean
+          type: Database["public"]["Enums"]["notification_type"]
+          updated_at: string
+          user_id: string
+          video_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          type: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id: string
+          video_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          read?: boolean
+          type?: Database["public"]["Enums"]["notification_type"]
+          updated_at?: string
+          user_id?: string
+          video_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_video_id_fkey"
             columns: ["video_id"]
             isOneToOne: false
             referencedRelation: "videos"
@@ -72,6 +169,42 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      saved_videos: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          video_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          video_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          video_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_videos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "saved_videos_video_id_fkey"
+            columns: ["video_id"]
+            isOneToOne: false
+            referencedRelation: "videos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscriptions: {
         Row: {
@@ -170,7 +303,7 @@ export type Database = {
       increment_video_views: { Args: { _video_id: string }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      notification_type: "like" | "comment" | "subscribe" | "new_video"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -297,6 +430,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      notification_type: ["like", "comment", "subscribe", "new_video"],
+    },
   },
 } as const
