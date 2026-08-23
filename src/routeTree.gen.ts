@@ -15,7 +15,6 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UploadRouteImport } from './routes/upload'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
@@ -50,11 +49,6 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
@@ -78,7 +72,6 @@ export interface FileRoutesByFullPath {
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
@@ -90,7 +83,6 @@ export interface FileRoutesByTo {
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
@@ -103,7 +95,6 @@ export interface FileRoutesById {
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
   '/upload': typeof UploadRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
@@ -117,7 +108,6 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/saved'
     | '/search'
-    | '/settings'
     | '/upload'
     | '/u/$username'
     | '/video/$videoId'
@@ -129,7 +119,6 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/saved'
     | '/search'
-    | '/settings'
     | '/upload'
     | '/u/$username'
     | '/video/$videoId'
@@ -141,7 +130,6 @@ export interface FileRouteTypes {
     | '/ranking'
     | '/saved'
     | '/search'
-    | '/settings'
     | '/upload'
     | '/u/$username'
     | '/video/$videoId'
@@ -154,7 +142,6 @@ export interface RootRouteChildren {
   RankingRoute: typeof RankingRoute
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
-  SettingsRoute: typeof SettingsRoute
   UploadRoute: typeof UploadRoute
   UUsernameRoute: typeof UUsernameRoute
   VideoVideoIdRoute: typeof VideoVideoIdRoute
@@ -204,13 +191,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/upload': {
       id: '/upload'
       path: '/upload'
@@ -242,7 +222,6 @@ const rootRouteChildren: RootRouteChildren = {
   RankingRoute: RankingRoute,
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
-  SettingsRoute: SettingsRoute,
   UploadRoute: UploadRoute,
   UUsernameRoute: UUsernameRoute,
   VideoVideoIdRoute: VideoVideoIdRoute,

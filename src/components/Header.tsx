@@ -66,13 +66,6 @@ export function Header() {
                   <option value="ja">{t("japanese")}</option>
                   <option value="en">{t("english")}</option>
                 </select>
-                {user ? (
-                  <Button asChild variant="secondary" className="mt-2 justify-start">
-                    <Link to="/settings" onClick={() => setSettingsOpen(false)}>
-                      {t("editProfile")}
-                    </Link>
-                  </Button>
-                ) : null}
               </div>
             </DialogContent>
           </Dialog>
