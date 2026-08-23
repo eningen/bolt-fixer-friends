@@ -41,6 +41,9 @@ const translations = {
     english: "English",
     close: "Close",
     logoutDone: "Logged out",
+    saved: "Watch later",
+    notifications: "Notifications",
+    editProfile: "Edit profile",
   },
 } as const;
 
