@@ -21,6 +21,9 @@ const translations = {
     english: "English",
     close: "閉じる",
     logoutDone: "ログアウトしました",
+    saved: "後で見る",
+    notifications: "通知",
+    editProfile: "プロフィール編集",
   },
   en: {
     home: "Home",
@@ -38,6 +41,9 @@ const translations = {
     english: "English",
     close: "Close",
     logoutDone: "Logged out",
+    saved: "Watch later",
+    notifications: "Notifications",
+    editProfile: "Edit profile",
   },
 } as const;
 
@@ -86,5 +92,5 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLanguage() {
-  return useContext(LanguageContext);
+  return useContext(LanguageContext) ?? fallbackLanguageContext;
 }

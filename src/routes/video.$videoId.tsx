@@ -10,6 +10,8 @@ import { videoDetailQuery, videoLikesQuery } from "@/lib/queries";
 import { formatRelativeDate, formatViews, parseVideoUrl } from "@/lib/video";
 import { useMediaUrl } from "@/lib/storage";
 import { Header } from "@/components/Header";
+import { Comments } from "@/components/Comments";
+import { SaveButton } from "@/components/SaveButton";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -161,16 +163,19 @@ function VideoDetailPage() {
                 <span className="text-sm text-muted-foreground">不明なユーザー</span>
               )}
 
-              <Button
-                variant={liked ? "default" : "secondary"}
-                size="sm"
-                className="rounded-full"
-                onClick={() => toggleLike.mutate()}
-                disabled={toggleLike.isPending}
-              >
-                <Heart className={liked ? "size-4 fill-current" : "size-4"} />
-                {likes?.count ?? 0}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={liked ? "default" : "secondary"}
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => toggleLike.mutate()}
+                  disabled={toggleLike.isPending}
+                >
+                  <Heart className={liked ? "size-4 fill-current" : "size-4"} />
+                  {likes?.count ?? 0}
+                </Button>
+                <SaveButton videoId={videoId} />
+              </div>
             </div>
 
             {video.description ? (
@@ -178,6 +183,8 @@ function VideoDetailPage() {
                 {video.description}
               </p>
             ) : null}
+
+            <Comments videoId={videoId} />
           </>
         )}
       </main>
