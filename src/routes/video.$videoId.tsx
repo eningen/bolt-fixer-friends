@@ -10,6 +10,8 @@ import { videoDetailQuery, videoLikesQuery } from "@/lib/queries";
 import { formatRelativeDate, formatViews, parseVideoUrl } from "@/lib/video";
 import { useMediaUrl } from "@/lib/storage";
 import { Header } from "@/components/Header";
+import { Comments } from "@/components/Comments";
+import { SaveButton } from "@/components/SaveButton";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
