@@ -21,6 +21,9 @@ const translations = {
     english: "English",
     close: "閉じる",
     logoutDone: "ログアウトしました",
+    saved: "後で見る",
+    notifications: "通知",
+    editProfile: "プロフィール編集",
   },
   en: {
     home: "Home",
