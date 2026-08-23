@@ -163,16 +163,19 @@ function VideoDetailPage() {
                 <span className="text-sm text-muted-foreground">不明なユーザー</span>
               )}
 
-              <Button
-                variant={liked ? "default" : "secondary"}
-                size="sm"
-                className="rounded-full"
-                onClick={() => toggleLike.mutate()}
-                disabled={toggleLike.isPending}
-              >
-                <Heart className={liked ? "size-4 fill-current" : "size-4"} />
-                {likes?.count ?? 0}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={liked ? "default" : "secondary"}
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => toggleLike.mutate()}
+                  disabled={toggleLike.isPending}
+                >
+                  <Heart className={liked ? "size-4 fill-current" : "size-4"} />
+                  {likes?.count ?? 0}
+                </Button>
+                <SaveButton videoId={videoId} />
+              </div>
             </div>
 
             {video.description ? (
@@ -180,6 +183,8 @@ function VideoDetailPage() {
                 {video.description}
               </p>
             ) : null}
+
+            <Comments videoId={videoId} />
           </>
         )}
       </main>
