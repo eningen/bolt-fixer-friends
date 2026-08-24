@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Film, Link2, Loader2 } from "lucide-react";
+import { Film, Link2, Loader2, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
