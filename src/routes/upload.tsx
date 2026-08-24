@@ -251,34 +251,51 @@ function UploadPage() {
                 />
               ) : null}
             </TabsContent>
+
+            <TabsContent value="text" className="mt-4 space-y-3">
+              <Label htmlFor="post-body">本文（最大2000文字）</Label>
+              <Textarea
+                id="post-body"
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="いまどうしてる？棒人間の話をしよう"
+                maxLength={2000}
+                rows={7}
+              />
+              <p className="text-xs text-muted-foreground">{body.trim().length} / 2000</p>
+            </TabsContent>
           </Tabs>
 
-          <div className="space-y-2">
-            <Label htmlFor="title">タイトル</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="棒人間バトル 第1話"
-              maxLength={100}
-            />
-          </div>
+          {mode === "text" ? null : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="title">タイトル</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="棒人間バトル 第1話"
+                  maxLength={100}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">説明（任意）</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="動画の見どころを書きましょう"
-              maxLength={1000}
-              rows={5}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">説明（任意）</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="動画の見どころを書きましょう"
+                  maxLength={1000}
+                  rows={5}
+                />
+              </div>
+            </>
+          )}
 
           <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {busy ? "アップロード中…" : "投稿する"}
+            {busy ? "送信中…" : "投稿する"}
           </Button>
         </form>
       </main>
