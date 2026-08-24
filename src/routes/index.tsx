@@ -80,6 +80,9 @@ function Index() {
             description="最初の棒人間動画を投稿して、このページを埋めてみましょう。"
           />
         )}
+
+        <h2 className="mb-4 mt-10 text-lg font-bold">みんなの投稿</h2>
+        <PostList posts={posts ?? []} />
       </main>
     </div>
   );
