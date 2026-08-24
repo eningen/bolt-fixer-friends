@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Film, Link2, Loader2 } from "lucide-react";
+import { Film, Link2, Loader2, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -50,9 +50,10 @@ function UploadPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"file" | "url">("file");
+  const [mode, setMode] = useState<"file" | "url" | "text">("file");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
@@ -90,6 +91,30 @@ function UploadPage() {
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user || busy) return;
+
+    if (mode === "text") {
+      const text = body.trim();
+      if (!text) {
+        toast.error("本文を入力してください");
+        return;
+      }
+      if (text.length > 2000) {
+        toast.error("本文は2000文字以内にしてください");
+        return;
+      }
+      setBusy(true);
+      const { error } = await supabase.from("posts").insert({ user_id: user.id, body: text });
+      setBusy(false);
+      if (error) {
+        toast.error("投稿に失敗しました。もう一度お試しください。");
+        return;
+      }
+      setBody("");
+      await queryClient.invalidateQueries({ queryKey: ["posts"] });
+      toast.success("文章を投稿しました");
+      void navigate({ to: "/" });
+      return;
+    }
 
     const meta = metaSchema.safeParse({ title, description });
     if (!meta.success) {
@@ -161,21 +186,25 @@ function UploadPage() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="text-2xl font-extrabold">動画を投稿</h1>
+        <h1 className="text-2xl font-extrabold">投稿する</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          フォトライブラリから動画を選ぶか、YouTubeのURLを貼り付けて投稿できます。
+          動画はフォトライブラリまたはURLから、文章だけの投稿もできます。
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-6">
-          <Tabs value={mode} onValueChange={(value) => setMode(value as "file" | "url")}>
+          <Tabs value={mode} onValueChange={(value) => setMode(value as "file" | "url" | "text")}>
             <TabsList className="w-full">
               <TabsTrigger value="file" className="flex-1">
                 <Film className="size-4" />
-                ファイルから
+                ファイル
               </TabsTrigger>
               <TabsTrigger value="url" className="flex-1">
                 <Link2 className="size-4" />
-                URLから
+                URL
+              </TabsTrigger>
+              <TabsTrigger value="text" className="flex-1">
+                <PenLine className="size-4" />
+                文章
               </TabsTrigger>
             </TabsList>
 
@@ -222,34 +251,51 @@ function UploadPage() {
                 />
               ) : null}
             </TabsContent>
+
+            <TabsContent value="text" className="mt-4 space-y-3">
+              <Label htmlFor="post-body">本文（最大2000文字）</Label>
+              <Textarea
+                id="post-body"
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="いまどうしてる？棒人間の話をしよう"
+                maxLength={2000}
+                rows={7}
+              />
+              <p className="text-xs text-muted-foreground">{body.trim().length} / 2000</p>
+            </TabsContent>
           </Tabs>
 
-          <div className="space-y-2">
-            <Label htmlFor="title">タイトル</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder="棒人間バトル 第1話"
-              maxLength={100}
-            />
-          </div>
+          {mode === "text" ? null : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="title">タイトル</Label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="棒人間バトル 第1話"
+                  maxLength={100}
+                />
+              </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">説明（任意）</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="動画の見どころを書きましょう"
-              maxLength={1000}
-              rows={5}
-            />
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">説明（任意）</Label>
+                <Textarea
+                  id="description"
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="動画の見どころを書きましょう"
+                  maxLength={1000}
+                  rows={5}
+                />
+              </div>
+            </>
+          )}
 
           <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {busy ? "アップロード中…" : "投稿する"}
+            {busy ? "送信中…" : "投稿する"}
           </Button>
         </form>
       </main>

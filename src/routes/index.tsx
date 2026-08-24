@@ -5,7 +5,8 @@ import { Header } from "@/components/Header";
 import { StickmanMark } from "@/components/StickmanMark";
 import { EmptyState, VideoCard, VideoGridSkeleton } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
-import { latestVideosQuery } from "@/lib/queries";
+import { PostList } from "@/components/PostList";
+import { latestPostsQuery, latestVideosQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { data, isPending, error } = useQuery(latestVideosQuery);
+  const { data: posts } = useQuery(latestPostsQuery);
 
   return (
     <div className="min-h-screen">
@@ -78,6 +80,9 @@ function Index() {
             description="最初の棒人間動画を投稿して、このページを埋めてみましょう。"
           />
         )}
+
+        <h2 className="mb-4 mt-10 text-lg font-bold">みんなの投稿</h2>
+        <PostList posts={posts ?? []} />
       </main>
     </div>
   );

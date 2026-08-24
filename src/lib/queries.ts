@@ -252,3 +252,48 @@ export function notificationsQuery(userId: string | undefined) {
     },
   });
 }
+
+export type PostRow = {
+  id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  profile: {
+    username: string;
+    display_name: string;
+    avatar_url: string | null;
+  } | null;
+};
+
+const POST_SELECT =
+  "id,user_id,body,created_at,profile:profiles!posts_user_id_fkey(username,display_name,avatar_url)";
+
+export const latestPostsQuery = queryOptions({
+  queryKey: ["posts", "latest"],
+  queryFn: async (): Promise<PostRow[]> => {
+    const { data, error } = await supabase
+      .from("posts")
+      .select(POST_SELECT)
+      .order("created_at", { ascending: false })
+      .limit(30);
+    if (error) throw error;
+    return (data ?? []) as unknown as PostRow[];
+  },
+});
+
+export function userPostsQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["posts", "user", userId],
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<PostRow[]> => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from("posts")
+        .select(POST_SELECT)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as PostRow[];
+    },
+  });
+}

@@ -86,5 +86,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 }
 
 export function useLanguage() {
-  return useContext(LanguageContext);
+  const context = useContext(LanguageContext);
+  if (!context) {
+    return {
+      language: "ja" as Language,
+      setLanguage: () => {},
+      t: (key: TranslationKey) => translations.ja[key],
+    };
+  }
+  return context;
 }

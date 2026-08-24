@@ -100,14 +100,14 @@ function AuthPage() {
     toast.success("確認メールを送信しました。メール内のリンクから登録を完了してください。");
   };
 
-  const onGoogle = async () => {
+  const onOAuth = async (provider: "google" | "microsoft", label: string) => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
       setBusy(false);
-      toast.error("Googleログインに失敗しました");
+      toast.error(`${label}ログインに失敗しました`);
       return;
     }
     if (result.redirected) return;
@@ -124,15 +124,26 @@ function AuthPage() {
         </p>
 
         <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-card">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={onGoogle}
-            disabled={busy}
-          >
-            Googleで続ける
-          </Button>
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => void onOAuth("google", "Google")}
+              disabled={busy}
+            >
+              Googleで続ける
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => void onOAuth("microsoft", "Microsoft")}
+              disabled={busy}
+            >
+              Microsoftで続ける
+            </Button>
+          </div>
 
           <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
