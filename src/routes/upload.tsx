@@ -92,6 +92,30 @@ function UploadPage() {
     event.preventDefault();
     if (!user || busy) return;
 
+    if (mode === "text") {
+      const text = body.trim();
+      if (!text) {
+        toast.error("本文を入力してください");
+        return;
+      }
+      if (text.length > 2000) {
+        toast.error("本文は2000文字以内にしてください");
+        return;
+      }
+      setBusy(true);
+      const { error } = await supabase.from("posts").insert({ user_id: user.id, body: text });
+      setBusy(false);
+      if (error) {
+        toast.error("投稿に失敗しました。もう一度お試しください。");
+        return;
+      }
+      setBody("");
+      await queryClient.invalidateQueries({ queryKey: ["posts"] });
+      toast.success("文章を投稿しました");
+      void navigate({ to: "/" });
+      return;
+    }
+
     const meta = metaSchema.safeParse({ title, description });
     if (!meta.success) {
       toast.error(meta.error.issues[0]?.message ?? "入力内容を確認してください");
