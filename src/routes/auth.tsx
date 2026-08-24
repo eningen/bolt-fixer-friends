@@ -100,14 +100,14 @@ function AuthPage() {
     toast.success("確認メールを送信しました。メール内のリンクから登録を完了してください。");
   };
 
-  const onGoogle = async () => {
+  const onOAuth = async (provider: "google" | "microsoft", label: string) => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
+    const result = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
     if (result.error) {
       setBusy(false);
-      toast.error("Googleログインに失敗しました");
+      toast.error(`${label}ログインに失敗しました`);
       return;
     }
     if (result.redirected) return;
