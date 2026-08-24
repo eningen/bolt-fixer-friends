@@ -186,21 +186,25 @@ function UploadPage() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-2xl px-4 py-8">
-        <h1 className="text-2xl font-extrabold">動画を投稿</h1>
+        <h1 className="text-2xl font-extrabold">投稿する</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          フォトライブラリから動画を選ぶか、YouTubeのURLを貼り付けて投稿できます。
+          動画はフォトライブラリまたはURLから、文章だけの投稿もできます。
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-6">
-          <Tabs value={mode} onValueChange={(value) => setMode(value as "file" | "url")}>
+          <Tabs value={mode} onValueChange={(value) => setMode(value as "file" | "url" | "text")}>
             <TabsList className="w-full">
               <TabsTrigger value="file" className="flex-1">
                 <Film className="size-4" />
-                ファイルから
+                ファイル
               </TabsTrigger>
               <TabsTrigger value="url" className="flex-1">
                 <Link2 className="size-4" />
-                URLから
+                URL
+              </TabsTrigger>
+              <TabsTrigger value="text" className="flex-1">
+                <PenLine className="size-4" />
+                文章
               </TabsTrigger>
             </TabsList>
 
