@@ -124,15 +124,26 @@ function AuthPage() {
         </p>
 
         <div className="mt-8 rounded-xl border border-border bg-card p-6 shadow-card">
-          <Button
-            type="button"
-            variant="secondary"
-            className="w-full"
-            onClick={onGoogle}
-            disabled={busy}
-          >
-            Googleで続ける
-          </Button>
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => void onOAuth("google", "Google")}
+              disabled={busy}
+            >
+              Googleで続ける
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={() => void onOAuth("microsoft", "Microsoft")}
+              disabled={busy}
+            >
+              Microsoftで続ける
+            </Button>
+          </div>
 
           <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />
