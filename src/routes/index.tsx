@@ -29,6 +29,7 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { data, isPending, error } = useQuery(latestVideosQuery);
+  const { data: posts } = useQuery(latestPostsQuery);
 
   return (
     <div className="min-h-screen">
