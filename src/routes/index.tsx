@@ -5,7 +5,8 @@ import { Header } from "@/components/Header";
 import { StickmanMark } from "@/components/StickmanMark";
 import { EmptyState, VideoCard, VideoGridSkeleton } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
-import { latestVideosQuery } from "@/lib/queries";
+import { PostList } from "@/components/PostList";
+import { latestPostsQuery, latestVideosQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/")({
   head: () => ({
