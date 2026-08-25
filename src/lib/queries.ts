@@ -187,6 +187,32 @@ export function notificationsQuery(userId: string | undefined) {
   });
 }
 
+export type MailboxMessage = {
+  id: string;
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
+};
+
+export function mailboxMessagesQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["mailbox", userId], enabled: Boolean(userId),
+    queryFn: async (): Promise<MailboxMessage[]> => {
+      if (!userId) return [];
+      const db = supabase as any;
+      const { data, error } = await db
+        .from("mailbox_messages")
+        .select("id,title,body,read,created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as MailboxMessage[];
+    },
+  });
+}
+
 export type PostRow = {
   id: string;
   user_id: string;
