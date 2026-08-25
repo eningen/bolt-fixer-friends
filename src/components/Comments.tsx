@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { Heart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ interface CommentRow {
   body: string;
   created_at: string;
   profile: { username: string; display_name: string; avatar_url: string | null } | null;
+  like_count: number;
+  liked_by_me: boolean;
 }
 
 export function Comments({ videoId }: { videoId: string }) {
@@ -32,7 +34,22 @@ export function Comments({ videoId }: { videoId: string }) {
         .eq("video_id", videoId)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as CommentRow[];
+      const rows = (data ?? []) as unknown as Omit<CommentRow, "like_count" | "liked_by_me">[];
+      if (!rows.length) return [];
+
+      const ids = rows.map((row) => row.id);
+      const { data: likes, error: likesError } = await supabase
+        .from("comment_likes")
+        .select("comment_id,user_id")
+        .in("comment_id", ids);
+      if (likesError) throw likesError;
+
+      const likeRows = likes ?? [];
+      return rows.map((row) => ({
+        ...row,
+        like_count: likeRows.filter((like) => like.comment_id === row.id).length,
+        liked_by_me: !!user && likeRows.some((like) => like.comment_id === row.id && like.user_id === user.id),
+      }));
     },
   });
   const [body, setBody] = useState("");
@@ -48,6 +65,21 @@ export function Comments({ videoId }: { videoId: string }) {
       if (error) throw error;
     },
     onSuccess: () => { setBody(""); void invalidate(); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const toggleLike = useMutation({
+    mutationFn: async (comment: CommentRow) => {
+      if (!user) throw new Error("ログインが必要です");
+      if (comment.liked_by_me) {
+        const { error } = await supabase.from("comment_likes").delete().eq("comment_id", comment.id).eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("comment_likes").insert({ comment_id: comment.id, user_id: user.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => void invalidate(),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -80,7 +112,13 @@ export function Comments({ videoId }: { videoId: string }) {
             <div className="min-w-0 flex-1">
               <p className="text-xs text-muted-foreground">{comment.profile?.display_name ?? "不明なユーザー"} · {formatRelativeDate(comment.created_at)}</p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm">{comment.body}</p>
-              {user?.id === comment.user_id ? <Button variant="ghost" size="sm" aria-label="コメントを削除" onClick={() => remove.mutate(comment.id)}><Trash2 className="size-4" /></Button> : null}
+              <div className="mt-1 flex items-center gap-2">
+                <Button type="button" variant="ghost" size="sm" aria-label={comment.liked_by_me ? "いいねを解除" : "コメントにいいね"} onClick={() => toggleLike.mutate(comment)} disabled={!user || toggleLike.isPending}>
+                  <Heart className={`size-4 ${comment.liked_by_me ? "fill-current" : ""}`} />
+                  <span>{comment.like_count}</span>
+                </Button>
+                {user?.id === comment.user_id ? <Button variant="ghost" size="sm" aria-label="コメントを削除" onClick={() => remove.mutate(comment.id)}><Trash2 className="size-4" /></Button> : null}
+              </div>
             </div>
           </li>
         ))}
