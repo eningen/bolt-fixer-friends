@@ -79,16 +79,6 @@ export function Header() {
     void navigate({ to: "/" });
   };
 
-  const enableBrowserNotifications = async () => {
-    if (typeof Notification === "undefined") {
-      toast.error("このブラウザは通知に対応していません");
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") toast.success("通知を許可しました");
-    else toast.error("ブラウザ通知が許可されませんでした");
-  };
-
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
@@ -101,7 +91,7 @@ export function Header() {
           {user ? (
             <>
               <Button asChild size="sm"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button>
-              <Button asChild variant="ghost" size="sm" className="relative" onClick={enableBrowserNotifications} aria-label="通知・メールボックス"><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>
+              <Button asChild variant="ghost" size="sm" className="relative" aria-label="通知・メールボックス"><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>
               {profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")}><Avatar className="size-8"><AvatarImage src={profile.avatar_url ?? undefined} alt="" /><AvatarFallback className="text-xs">{profile.display_name.slice(0, 2)}</AvatarFallback></Avatar></Link> : null}
               <Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button>
             </>
