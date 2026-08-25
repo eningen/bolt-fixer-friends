@@ -38,12 +38,13 @@ export function Comments({ videoId }: { videoId: string }) {
       if (!rows.length) return [];
 
       const ids = rows.map((row) => row.id);
-      const { data: likes } = await supabase
+      const { data: likes, error: likesError } = await supabase
         .from("comment_likes")
         .select("comment_id,user_id")
         .in("comment_id", ids);
 
-      const likeRows = likes ?? [];
+      // いいね取得が失敗してもコメント自体は表示する
+      const likeRows = likesError ? [] : (likes ?? []);
       return rows.map((row) => ({
         ...row,
         like_count: likeRows.filter((like) => like.comment_id === row.id).length,
@@ -70,16 +71,49 @@ export function Comments({ videoId }: { videoId: string }) {
   const toggleLike = useMutation({
     mutationFn: async (comment: CommentRow) => {
       if (!user) throw new Error("ログインが必要です");
+
       if (comment.liked_by_me) {
-        const { error } = await supabase.from("comment_likes").delete().eq("comment_id", comment.id).eq("user_id", user.id);
+        const { error } = await supabase
+          .from("comment_likes")
+          .delete()
+          .eq("comment_id", comment.id)
+          .eq("user_id", user.id);
         if (error) throw error;
-      } else {
-        const { error } = await supabase.from("comment_likes").insert({ comment_id: comment.id, user_id: user.id });
-        if (error) throw error;
+        return { liked: false };
       }
+
+      const { error } = await supabase
+        .from("comment_likes")
+        .insert({ comment_id: comment.id, user_id: user.id });
+      if (error) throw error;
+      return { liked: true };
     },
-    onSuccess: () => void invalidate(),
-    onError: (error: Error) => toast.error(error.message),
+    onMutate: async (comment: CommentRow) => {
+      await queryClient.cancelQueries({ queryKey: ["video", videoId, "comments"] });
+      const previous = queryClient.getQueryData<CommentRow[]>(["video", videoId, "comments"]);
+      const nextLiked = !comment.liked_by_me;
+
+      queryClient.setQueryData<CommentRow[]>(["video", videoId, "comments"], (current = []) =>
+        current.map((item) =>
+          item.id === comment.id
+            ? {
+                ...item,
+                liked_by_me: nextLiked,
+                like_count: Math.max(0, item.like_count + (nextLiked ? 1 : -1)),
+              }
+            : item,
+        ),
+      );
+
+      return { previous };
+    },
+    onError: (error: Error, _comment, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["video", videoId, "comments"], context.previous);
+      }
+      toast.error(error.message);
+    },
+    onSettled: () => void invalidate(),
   });
 
   const remove = useMutation({
