@@ -10,6 +10,7 @@ import { videoDetailQuery, videoLikesQuery } from "@/lib/queries";
 import { formatRelativeDate, formatViews, parseVideoUrl } from "@/lib/video";
 import { useMediaUrl } from "@/lib/storage";
 import { Header } from "@/components/Header";
+import { Comments } from "@/components/Comments";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -135,8 +136,6 @@ function VideoDetailPage() {
               )}
             </div>
 
-
-
             <h1 className="mt-4 text-xl font-bold leading-snug">{video.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {formatViews(video.views)} · {formatRelativeDate(video.created_at)}
@@ -178,6 +177,8 @@ function VideoDetailPage() {
                 {video.description}
               </p>
             ) : null}
+
+            <Comments videoId={videoId} />
           </>
         )}
       </main>
