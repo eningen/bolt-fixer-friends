@@ -38,11 +38,10 @@ export function Comments({ videoId }: { videoId: string }) {
       if (!rows.length) return [];
 
       const ids = rows.map((row) => row.id);
-      const { data: likes, error: likesError } = await supabase
+      const { data: likes } = await supabase
         .from("comment_likes")
         .select("comment_id,user_id")
         .in("comment_id", ids);
-      if (likesError) throw likesError;
 
       const likeRows = likes ?? [];
       return rows.map((row) => ({
