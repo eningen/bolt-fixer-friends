@@ -25,6 +25,16 @@ CREATE TRIGGER update_mailbox_messages_updated_at
   BEFORE UPDATE ON public.mailbox_messages
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DO $$
+BEGIN
+  BEGIN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.mailbox_messages;
+  EXCEPTION WHEN duplicate_object THEN
+    NULL;
+  END;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.publish_announcement(p_title text, p_body text)
 RETURNS integer
 LANGUAGE plpgsql
