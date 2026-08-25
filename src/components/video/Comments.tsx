@@ -37,6 +37,41 @@ export function Comments({ videoId }: CommentsProps) {
     enabled: !!videoId,
   });
 
+  const { data: commentLikes = [] } = useQuery({
+    queryKey: ["comment-likes", videoId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("comment_likes")
+        .select("comment_id, user_id")
+        .in("comment_id", comments.map((comment) => comment.id));
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: comments.length > 0,
+  });
+
+  const toggleCommentLike = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("ログインが必要です");
+
+      const existing = commentLikes.find((like) => like.comment_id === commentId && like.user_id === user.id);
+      if (existing) {
+        const { error } = await supabase.from("comment_likes").delete().eq("comment_id", commentId).eq("user_id", user.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("comment_likes").insert({ comment_id: commentId, user_id: user.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["comment-likes", videoId] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "コメントのいいねを変更できませんでした", description: error.message, variant: "destructive" });
+    },
+  });
+
   const addComment = useMutation({
     mutationFn: async (commentBody: string) => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -74,12 +109,25 @@ export function Comments({ videoId }: CommentsProps) {
         </Button>
       </div>
       <div className="space-y-3">
-        {isLoading ? <p>読み込み中...</p> : comments.length === 0 ? <p className="text-muted-foreground">まだコメントはありません。</p> : comments.map((comment) => (
-          <article key={comment.id} className="rounded-lg border p-3">
-            <div className="text-sm font-medium">{comment.profiles?.display_name || comment.profiles?.username || "ユーザー"}</div>
-            <p className="mt-1 whitespace-pre-wrap">{comment.body}</p>
-          </article>
-        ))}
+        {isLoading ? <p>読み込み中...</p> : comments.length === 0 ? <p className="text-muted-foreground">まだコメントはありません。</p> : comments.map((comment) => {
+          const likes = commentLikes.filter((like) => like.comment_id === comment.id);
+          const { data: { user } } = { data: { user: null as { id: string } | null } };
+          return (
+            <article key={comment.id} className="rounded-lg border p-3">
+              <div className="text-sm font-medium">{comment.profiles?.display_name || comment.profiles?.username || "ユーザー"}</div>
+              <p className="mt-1 whitespace-pre-wrap">{comment.body}</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() => toggleCommentLike.mutate(comment.id)}
+                disabled={toggleCommentLike.isPending}
+              >
+                {likes.some((like) => like.user_id === user?.id) ? "❤️" : "♡"} {likes.length}
+              </Button>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
