@@ -73,10 +73,40 @@ function NotificationsPage() {
   });
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
+    if (typeof Notification === "undefined") return "unsupported";
+    return Notification.permission;
+  });
 
   const unread = notifications.filter((item) => !item.read).length;
   const mailboxUnread = mailbox.filter((item) => !item.read).length;
   const isAdmin = profile?.username === "tetta_art";
+
+  const enableBrowserNotifications = async () => {
+    if (typeof Notification === "undefined") {
+      setNotificationPermission("unsupported");
+      toast.info("このブラウザは通知に対応していません");
+      return;
+    }
+    if (Notification.permission === "denied") {
+      setNotificationPermission("denied");
+      toast.info("ブラウザの設定から、このサイトの通知を許可してください");
+      return;
+    }
+    if (Notification.permission === "granted") {
+      setNotificationPermission("granted");
+      toast.success("通知はすでに有効です");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      if (permission === "granted") toast.success("通知を許可しました");
+      else if (permission === "denied") toast.info("ブラウザの設定から、このサイトの通知を許可してください");
+    } catch {
+      toast.info("ブラウザの設定から通知を確認してください");
+    }
+  };
 
   const markAllRead = useMutation({
     mutationFn: async () => {
@@ -132,6 +162,24 @@ function NotificationsPage() {
           </div>
           {unread > 0 ? <Button variant="secondary" size="sm" className="rounded-full" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>通知をすべて既読</Button> : null}
         </div>
+
+        <section className="mt-6 rounded-xl border border-border bg-surface/40 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-bold">🔔 ブラウザ通知</h2>
+              <p className="mt-1 text-sm text-muted-foreground">新しいアップデートが届いたときにブラウザでも知らせます。</p>
+            </div>
+            {notificationPermission === "granted" ? (
+              <span className="shrink-0 rounded-full bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">✓ 通知は有効です</span>
+            ) : notificationPermission === "denied" ? (
+              <span className="shrink-0 text-sm text-muted-foreground">ブラウザの設定から通知を許可してください</span>
+            ) : notificationPermission === "unsupported" ? (
+              <span className="shrink-0 text-sm text-muted-foreground">このブラウザは通知に対応していません</span>
+            ) : (
+              <Button type="button" className="shrink-0" onClick={enableBrowserNotifications}>🔔 通知を有効にする</Button>
+            )}
+          </div>
+        </section>
 
         {isAdmin ? (
           <section className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
