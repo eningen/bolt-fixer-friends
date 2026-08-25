@@ -79,15 +79,26 @@ function ProfilePage() {
       if (avatarFile) {
         if (!avatarFile.type.startsWith("image/")) throw new Error("画像ファイルを選択してください");
         if (avatarFile.size > 5 * 1024 * 1024) throw new Error("画像は5MB以内にしてください");
-        const extension = avatarFile.name.split(".").pop()?.toLowerCase() || "jpg";
+
+        const extensionByType: Record<string, string> = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+          "image/gif": "gif",
+        };
+        const extension = extensionByType[avatarFile.type];
+        if (!extension) throw new Error("JPG、PNG、WEBP、GIF画像を選択してください");
+
         const path = `${user.id}/avatar.${extension}`;
         const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatarFile, {
           upsert: true,
           contentType: avatarFile.type,
           cacheControl: "3600",
         });
-        if (uploadError) throw uploadError;
+        if (uploadError) throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
+
         const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(path);
+        if (!publicData?.publicUrl) throw new Error("画像URLを取得できませんでした");
         avatarUrl = `${publicData.publicUrl}?v=${Date.now()}`;
       }
 
@@ -95,7 +106,7 @@ function ProfilePage() {
         .from("profiles")
         .update({ display_name: cleanName, bio: cleanBio || null, avatar_url: avatarUrl })
         .eq("id", user.id);
-      if (error) throw error;
+      if (error) throw new Error(`プロフィールの保存に失敗しました: ${error.message}`);
     },
     onSuccess: async () => {
       toast.success("チャンネル情報を更新しました");
