@@ -6,9 +6,11 @@ type TranslationKey = keyof typeof translations.ja;
 const translations = {
   ja: {
     home: "ホーム", searchVideos: "動画を検索", search: "検索", ranking: "ランキング", upload: "投稿", myPage: "マイページ", login: "ログイン", logout: "ログアウト", settings: "設定", languageSettings: "言語設定", language: "言語", japanese: "日本語", english: "English", close: "閉じる", logoutDone: "ログアウトしました",
+    terms: "利用規約", adminLogin: "管理者ログイン", country: "住んでいる国", selectCountry: "国を選択", adminLoginRequired: "まずは一般ログインをしてください", adminId: "管理者ID", adminPassword: "管理者パスワード", adminIdPlaceholder: "管理者IDを入力", adminPasswordPlaceholder: "管理者パスワードを入力", adminIdGeneralError: "一般IDではなく管理者IDを入力してください", unknownAdmin: "不明な管理者", adminLoginSuccess: "管理者ログインしました", adminLoginFailed: "管理者認証に失敗しました", adminLoginButton: "管理者ログイン", back: "戻る",
   },
   en: {
     home: "Home", searchVideos: "Search videos", search: "Search", ranking: "Ranking", upload: "Upload", myPage: "My page", login: "Log in", logout: "Log out", settings: "Settings", languageSettings: "Language settings", language: "Language", japanese: "日本語", english: "English", close: "Close", logoutDone: "Logged out",
+    terms: "Terms of Service", adminLogin: "Admin login", country: "Country of residence", selectCountry: "Select country", adminLoginRequired: "Please log in with your regular account first", adminId: "Admin ID", adminPassword: "Admin password", adminIdPlaceholder: "Enter admin ID", adminPasswordPlaceholder: "Enter admin password", adminIdGeneralError: "Please enter an admin ID, not a regular user ID", unknownAdmin: "Unknown administrator", adminLoginSuccess: "Admin login successful", adminLoginFailed: "Admin authentication failed", adminLoginButton: "Admin login", back: "Back",
   },
 } as const;
 
