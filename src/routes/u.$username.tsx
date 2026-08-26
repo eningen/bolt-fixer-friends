@@ -150,7 +150,8 @@ function ProfilePage() {
       const reason = collabReason.trim();
       if (!content) throw new Error("コラボ内容を入力してください");
       if (!reason) throw new Error("コラボしたい理由を入力してください");
-      const { data: requestId, error } = await supabase.rpc("send_collaboration_request", {
+      const db = supabase as any;
+      const { data: requestId, error } = await db.rpc("send_collaboration_request", {
         p_recipient_id: channelId,
         p_content: content,
         p_reason: reason,
