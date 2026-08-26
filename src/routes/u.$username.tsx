@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Handshake } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +12,7 @@ import { ChannelAnalytics } from "@/components/ChannelAnalytics";
 import { EmptyState, VideoCard, VideoGridSkeleton } from "@/components/VideoCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 const BLOCKED_NAME_TERMS = [
   "sex", "sexy", "porn", "xxx", "fuck", "shit", "dick", "pussy", "nude", "nudes",
@@ -47,6 +49,9 @@ function ProfilePage() {
   const [bio, setBio] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [collabOpen, setCollabOpen] = useState(false);
+  const [collabContent, setCollabContent] = useState("");
+  const [collabReason, setCollabReason] = useState("");
 
   const channelId = data?.profile.id;
   const { data: subscribers = [] } = useQuery(channelSubscribersQuery(channelId));
@@ -137,6 +142,31 @@ function ProfilePage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const sendCollaboration = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("ログインが必要です");
+      if (!channelId || isOwner) throw new Error("このチャンネルにはコラボ依頼を送れません");
+      const content = collabContent.trim();
+      const reason = collabReason.trim();
+      if (!content) throw new Error("コラボ内容を入力してください");
+      if (!reason) throw new Error("コラボしたい理由を入力してください");
+      const { data: requestId, error } = await supabase.rpc("send_collaboration_request", {
+        p_recipient_id: channelId,
+        p_content: content,
+        p_reason: reason,
+      });
+      if (error) throw new Error(error.message);
+      return requestId as string;
+    },
+    onSuccess: () => {
+      setCollabContent("");
+      setCollabReason("");
+      setCollabOpen(false);
+      toast.success("コラボ依頼を送信しました！");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const totalViews = (data?.videos ?? []).reduce((sum, video) => sum + (video.views ?? 0), 0);
 
   return (
@@ -163,13 +193,44 @@ function ProfilePage() {
                   {editing ? "編集を閉じる" : "チャンネルを編集"}
                 </Button>
               ) : user ? (
-                <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>
-                  {isSubscribed ? "登録済み" : "チャンネル登録"}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>
+                    {isSubscribed ? "登録済み" : "チャンネル登録"}
+                  </Button>
+                  <Button variant="outline" className="rounded-full" onClick={() => setCollabOpen((value) => !value)}>
+                    <Handshake className="mr-2 size-4" />
+                    コラボ
+                  </Button>
+                </div>
               ) : (
                 <Button asChild variant="default" className="rounded-full"><Link to="/auth">ログインして登録</Link></Button>
               )}
             </div>
+
+            {!isOwner && user && collabOpen ? (
+              <section className="mt-6 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-bold">🤝 コラボ依頼を送る</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">{data.profile.display_name} さんにコラボ内容と理由を送ります。</p>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setCollabOpen(false)}>閉じる</Button>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <label className="block text-sm font-medium">コラボ内容
+                    <Textarea value={collabContent} onChange={(e) => setCollabContent(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="どんなコラボをしたいですか？" />
+                    <span className="mt-1 block text-xs text-muted-foreground">{collabContent.length}/1000</span>
+                  </label>
+                  <label className="block text-sm font-medium">コラボしたい理由
+                    <Textarea value={collabReason} onChange={(e) => setCollabReason(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="なぜこのチャンネルとコラボしたいですか？" />
+                    <span className="mt-1 block text-xs text-muted-foreground">{collabReason.length}/1000</span>
+                  </label>
+                  <Button disabled={sendCollaboration.isPending || !collabContent.trim() || !collabReason.trim()} onClick={() => sendCollaboration.mutate()}>
+                    {sendCollaboration.isPending ? "送信中…" : "コラボ依頼を送信"}
+                  </Button>
+                </div>
+              </section>
+            ) : null}
 
             {isOwner && editing ? (
               <section className="mt-6 max-w-2xl rounded-2xl border p-5">

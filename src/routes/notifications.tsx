@@ -18,8 +18,8 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/notifications")({
   head: () => ({
     meta: [
-      { title: "通知・メールボックス｜Stickman video" },
-      { name: "description", content: "アップデートのお知らせ、いいね、コメント、チャンネル登録などをまとめて確認。" },
+      { title: "写真ボックス・通知｜Stickman video" },
+      { name: "description", content: "アップデートのお知らせ、重要メール、いいね、コメント、チャンネル登録などをまとめて確認。" },
     ],
   }),
   component: NotificationsPage,
@@ -36,13 +36,18 @@ function label(item: NotificationRow) {
 }
 
 function MailboxCard({ item, onRead }: { item: MailboxMessage; onRead: (id: string) => void }) {
+  const isImportant = item.category === "important";
   return (
-    <button type="button" className={cn("w-full rounded-xl border border-border p-4 text-left transition-colors hover:bg-accent", !item.read && "bg-surface")} onClick={() => { if (!item.read) onRead(item.id); }}>
+    <button type="button" className={cn("w-full rounded-xl border p-4 text-left transition-colors hover:bg-accent", isImportant ? "border-amber-300/70 bg-amber-50/50 dark:bg-amber-950/10" : "border-border", !item.read && "bg-surface")} onClick={() => { if (!item.read) onRead(item.id); }}>
       <div className="flex items-start gap-3">
-        <div className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">✉</div>
+        <div className={cn("mt-1 flex size-9 shrink-0 items-center justify-center rounded-full", isImportant ? "bg-amber-500/15 text-amber-700" : "bg-primary/10 text-primary")}>{isImportant ? "⭐" : "✉"}</div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3"><p className="font-semibold">{item.title}</p>{!item.read ? <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" /> : null}</div>
-          <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{item.title}</p>{isImportant ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-700">最重要メール</span> : null}</div>
+            {!item.read ? <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" /> : null}
+          </div>
+          {item.sender ? <p className="mt-1 text-xs font-medium text-muted-foreground">送信者：{item.sender.display_name} @{item.sender.username}</p> : null}
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{item.body}</p>
           <p className="mt-2 text-xs text-muted-foreground">{formatRelativeDate(item.created_at)}</p>
         </div>
       </div>
@@ -64,7 +69,7 @@ function NotificationsPage() {
 
   const unread = notifications.filter((item) => !item.read).length;
   const mailboxUnread = mailbox.filter((item) => !item.read).length;
-  // Operator access is tied to the immutable Supabase Auth UID, not the editable username.
+  const importantUnread = mailbox.filter((item) => item.category === "important" && !item.read).length;
   const isAdmin = user?.id === "aff7aa26-32e9-4595-bcf1-09fd0f3bd720";
 
   const enableBrowserNotifications = async () => {
@@ -140,13 +145,13 @@ function NotificationsPage() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
-        <div className="flex items-center justify-between gap-4"><div><h1 className="text-2xl font-extrabold">通知・メールボックス</h1>{mailboxUnread > 0 ? <p className="mt-1 text-sm text-primary">未読のお知らせが {mailboxUnread} 件あります</p> : null}</div>{unread > 0 ? <Button variant="secondary" size="sm" className="rounded-full" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>通知をすべて既読</Button> : null}</div>
+        <div className="flex items-center justify-between gap-4"><div><h1 className="text-2xl font-extrabold">写真ボックス・通知</h1>{mailboxUnread > 0 ? <p className="mt-1 text-sm text-primary">未読のお知らせが {mailboxUnread} 件あります{importantUnread > 0 ? `・最重要メール ${importantUnread} 件` : ""}</p> : null}</div>{unread > 0 ? <Button variant="secondary" size="sm" className="rounded-full" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>通知をすべて既読</Button> : null}</div>
 
         <section className="mt-6 rounded-xl border border-border bg-surface/40 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold">🔔 ブラウザ通知</h2><p className="mt-1 text-sm text-muted-foreground">新しいアップデートが届いたときにブラウザでも知らせます。</p></div>{notificationPermission === "granted" ? <span className="shrink-0 rounded-full bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">✓ 通知は有効です</span> : notificationPermission === "denied" ? <span className="shrink-0 text-sm text-muted-foreground">ブラウザの設定から通知を許可してください</span> : notificationPermission === "unsupported" ? <span className="shrink-0 text-sm text-muted-foreground">このブラウザは通知に対応していません</span> : <Button type="button" className="shrink-0" onClick={enableBrowserNotifications}>🔔 通知を有効にする</Button>}</div></section>
 
         {isAdmin ? <section className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4"><h2 className="font-bold">📢 アップデートを全ユーザーへ配信</h2><p className="mt-1 text-xs text-muted-foreground">登録済みの全ユーザーのメールボックスに保存され、サイトを開いているユーザーには通知音も鳴ります。</p><div className="mt-4 space-y-3"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="お知らせのタイトル" maxLength={120} /><Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="アップデート内容を書いてください" rows={5} maxLength={5000} /><Button disabled={publish.isPending || !title.trim() || !body.trim()} onClick={() => publish.mutate()}>{publish.isPending ? "配信中…" : "全ユーザーへ配信"}</Button></div></section> : null}
 
-        <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">📬 メールボックス</h2></div>{!user && !loading ? <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border py-16"><p className="text-sm text-muted-foreground">ログインするとお知らせが届きます。</p><Button asChild><Link to="/auth">ログイン</Link></Button></div> : mailboxPending || loading ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-strong" />)}</div> : mailbox.length === 0 ? <EmptyState title="お知らせはまだありません" description="運営からのアップデートなどがここに届きます。" /> : <div className="space-y-3">{mailbox.map((item) => <MailboxCard key={item.id} item={item} onRead={(id) => markMailboxRead.mutate(id)} />)}</div>}</section>
+        <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">📬 メールボックス</h2></div>{!user && !loading ? <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border py-16"><p className="text-sm text-muted-foreground">ログインするとお知らせが届きます。</p><Button asChild><Link to="/auth">ログイン</Link></Button></div> : mailboxPending || loading ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-strong" />)}</div> : mailbox.length === 0 ? <EmptyState title="お知らせはまだありません" description="運営からのアップデートやコラボ依頼などがここに届きます。" /> : <div className="space-y-3">{[...mailbox].sort((a, b) => Number(b.category === "important") - Number(a.category === "important") || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((item) => <MailboxCard key={item.id} item={item} onRead={(id) => markMailboxRead.mutate(id)} />)}</div>}</section>
 
         <section className="mt-10"><h2 className="mb-3 text-lg font-bold">🔔 アクティビティ通知</h2>{notificationsPending || loading ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-strong" />)}</div> : notifications.length === 0 ? <EmptyState title="通知はまだありません" description="いいね・コメント・チャンネル登録などがあるとここに表示されます。" /> : <ul className="space-y-2">{notifications.map((item) => { const content = <div className="flex items-center gap-3"><UserAvatar src={item.actor?.avatar_url} name={item.actor?.display_name} className="size-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{label(item)}</p><p className="truncate text-xs text-muted-foreground">{item.video?.title ? `${item.video.title} · ` : ""}{formatRelativeDate(item.created_at)}</p></div>{!item.read ? <span className="size-2 rounded-full bg-primary" /> : null}</div>; const className = cn("block rounded-lg border border-border p-3 transition-colors hover:bg-accent", !item.read && "bg-surface"); return <li key={item.id}>{item.video_id ? <Link to="/video/$videoId" params={{ videoId: item.video_id }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : item.actor ? <Link to="/u/$username" params={{ username: item.actor.username }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : <div className={className}>{content}</div>}</li>; })}</ul>}</section>
       </main>

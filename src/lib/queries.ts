@@ -191,8 +191,10 @@ export type MailboxMessage = {
   id: string;
   title: string;
   body: string;
+  category: "normal" | "important";
   read: boolean;
   created_at: string;
+  sender: { username: string; display_name: string; avatar_url: string | null } | null;
 };
 
 export function mailboxMessagesQuery(userId: string | undefined) {
@@ -203,7 +205,7 @@ export function mailboxMessagesQuery(userId: string | undefined) {
       const db = supabase as any;
       const { data, error } = await db
         .from("mailbox_messages")
-        .select("id,title,body,read,created_at")
+        .select("id,title,body,category,read,created_at,sender:profiles!mailbox_messages_sender_id_fkey(username,display_name,avatar_url)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(100);
