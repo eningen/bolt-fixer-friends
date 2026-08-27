@@ -70,11 +70,24 @@ export function Comments({ videoId }: { videoId: string }) {
   const toggleLike = useMutation({
     mutationFn: async (comment: CommentRow) => {
       if (!user) throw new Error("ログインが必要です");
+
       if (comment.liked_by_me) {
-        const { error } = await supabase.from("comment_likes").delete().eq("comment_id", comment.id).eq("user_id", user.id);
+        const { error } = await supabase
+          .from("comment_likes")
+          .delete()
+          .eq("comment_id", comment.id)
+          .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("comment_likes").insert({ comment_id: comment.id, user_id: user.id });
+        // The database enforces one like per user/comment. Use an idempotent
+        // upsert so a stale UI or a double request cannot fail with a
+        // duplicate-key error.
+        const { error } = await supabase
+          .from("comment_likes")
+          .upsert(
+            { comment_id: comment.id, user_id: user.id },
+            { onConflict: "comment_id,user_id", ignoreDuplicates: true },
+          );
         if (error) throw error;
       }
     },
