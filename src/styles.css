@@ -105,12 +105,28 @@
   }
 }
 
-/* プロフィールのチャンネル名はスマホでも途中で切らず、複数行で表示する。 */
+/* プロフィールのチャンネル名は横方向に表示し、長い名前だけ末尾を省略する。 */
 main h1.text-2xl.font-extrabold {
-  overflow: visible;
-  text-overflow: clip;
-  white-space: normal;
-  overflow-wrap: anywhere;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* スマホではアバター＋名前を1段、登録/コラボ操作を次の段にして名前の幅を確保する。 */
+@media (max-width: 640px) {
+  main > div.flex.flex-wrap.items-center.gap-4 {
+    display: grid;
+    grid-template-columns: 4rem minmax(0, 1fr);
+    align-items: center;
+  }
+
+  main > div.flex.flex-wrap.items-center.gap-4 > :last-child {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
 }
 
 @utility hero-surface {
