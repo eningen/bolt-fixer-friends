@@ -45,8 +45,16 @@ export function CommentReplies({ commentId }: { commentId: string }) {
       if (!user) throw new Error("ログインが必要です");
       const trimmed = text.trim();
       if (!trimmed) throw new Error("返信を入力してください");
+
+      const { data: parent, error: parentError } = await supabase
+        .from("comments")
+        .select("video_id")
+        .eq("id", commentId)
+        .single();
+      if (parentError) throw parentError;
+
       const { error } = await supabase.from("comments").insert({
-        video_id: replies[0]?.video_id ?? undefined,
+        video_id: parent.video_id,
         parent_comment_id: commentId,
         user_id: user.id,
         body: trimmed,
