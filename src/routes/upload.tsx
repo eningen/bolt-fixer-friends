@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { Film, Link2, Loader2, PenLine } from "lucide-react";
+import { Film, Image, Link2, Loader2, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { parseVideoUrl } from "@/lib/video";
 import { MAX_VIDEO_BYTES, uploadVideoFile } from "@/lib/storage";
+import { MAX_THUMBNAIL_BYTES, uploadCustomThumbnail } from "@/lib/thumbnail";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +57,7 @@ function UploadPage() {
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -64,11 +66,17 @@ function UploadPage() {
 
   const parsed = parseVideoUrl(url);
   const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  const thumbnailPreview = useMemo(
+    () => (thumbnailFile ? URL.createObjectURL(thumbnailFile) : null),
+    [thumbnailFile],
+  );
+
   useEffect(() => {
     return () => {
       if (filePreview) URL.revokeObjectURL(filePreview);
+      if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
     };
-  }, [filePreview]);
+  }, [filePreview, thumbnailPreview]);
 
   const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0] ?? null;
@@ -86,6 +94,23 @@ function UploadPage() {
     }
     setFile(picked);
     if (!title.trim()) setTitle(picked.name.replace(/\.[^.]+$/, "").slice(0, 100));
+  };
+
+  const onPickThumbnail = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0] ?? null;
+    if (!picked) {
+      setThumbnailFile(null);
+      return;
+    }
+    if (!picked.type.startsWith("image/")) {
+      toast.error("画像ファイルを選択してください");
+      return;
+    }
+    if (picked.size > MAX_THUMBNAIL_BYTES) {
+      toast.error("サムネイルは10MB以内にしてください");
+      return;
+    }
+    setThumbnailFile(picked);
   };
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -158,6 +183,10 @@ function UploadPage() {
           thumbnail_url: video.thumbnailUrl,
           storage_path: null,
         };
+      }
+
+      if (thumbnailFile) {
+        insertData.thumbnail_url = await uploadCustomThumbnail(thumbnailFile, user.id);
       }
 
       const { data, error } = await supabase
@@ -268,6 +297,31 @@ function UploadPage() {
 
           {mode === "text" ? null : (
             <>
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div className="flex items-center gap-2">
+                  <Image className="size-4" />
+                  <Label htmlFor="thumbnail-file">カスタムサムネイル（任意）</Label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  好きな画像をサムネイルにできます。10MB以内の画像を選択してください。
+                  未選択なら動画から自動生成、URL投稿なら元のサムネイルを使用します。
+                </p>
+                <Input
+                  id="thumbnail-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickThumbnail}
+                  className="cursor-pointer file:mr-3 file:text-sm"
+                />
+                {thumbnailPreview ? (
+                  <img
+                    src={thumbnailPreview}
+                    alt="カスタムサムネイルのプレビュー"
+                    className="aspect-video w-full rounded-lg object-cover"
+                  />
+                ) : null}
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="title">タイトル</Label>
                 <Input
