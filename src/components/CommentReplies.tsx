@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface ReplyRow {
   id: string;
-  comment_id: string;
+  video_id: string;
   user_id: string;
   body: string;
   created_at: string;
@@ -31,9 +31,9 @@ export function CommentReplies({ commentId }: { commentId: string }) {
     enabled: open,
     queryFn: async (): Promise<ReplyRow[]> => {
       const { data, error } = await supabase
-        .from("comment_replies")
-        .select("id,comment_id,user_id,body,created_at,profile:profiles!comment_replies_user_id_fkey(username,display_name,avatar_url)")
-        .eq("comment_id", commentId)
+        .from("comments")
+        .select("id,video_id,user_id,body,created_at,profile:profiles!comments_user_id_fkey(username,display_name,avatar_url)")
+        .eq("parent_comment_id", commentId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as ReplyRow[];
@@ -45,8 +45,9 @@ export function CommentReplies({ commentId }: { commentId: string }) {
       if (!user) throw new Error("ログインが必要です");
       const trimmed = text.trim();
       if (!trimmed) throw new Error("返信を入力してください");
-      const { error } = await supabase.from("comment_replies").insert({
-        comment_id: commentId,
+      const { error } = await supabase.from("comments").insert({
+        video_id: replies[0]?.video_id ?? undefined,
+        parent_comment_id: commentId,
         user_id: user.id,
         body: trimmed,
       });
@@ -62,7 +63,7 @@ export function CommentReplies({ commentId }: { commentId: string }) {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("comment_replies").delete().eq("id", id);
+      const { error } = await supabase.from("comments").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
@@ -96,9 +97,7 @@ export function CommentReplies({ commentId }: { commentId: string }) {
                   <p className="text-xs text-muted-foreground">{reply.profile?.display_name ?? "不明なユーザー"} · {formatRelativeDate(reply.created_at)}</p>
                   <p className="whitespace-pre-wrap break-words text-sm">{reply.body}</p>
                   {user?.id === reply.user_id ? (
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remove.mutate(reply.id)} aria-label="返信を削除">
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => remove.mutate(reply.id)} aria-label="返信を削除"><Trash2 className="size-4" /></Button>
                   ) : null}
                 </div>
               </div>
