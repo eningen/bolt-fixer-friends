@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { MessageCircle, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { PostRow } from "@/lib/queries";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString("ja-JP", {
@@ -22,7 +24,10 @@ function formatDate(value: string) {
 export function PostList({ posts }: { posts: PostRow[] }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
   const authorIds = [...new Set(posts.map((post) => post.user_id))];
+  const postIds = posts.map((post) => post.id);
+  const db = supabase as any;
 
   const { data: subscriptions = [] } = useQuery({
     queryKey: ["post-author-subscriptions", user?.id, authorIds],
@@ -36,6 +41,27 @@ export function PostList({ posts }: { posts: PostRow[] }) {
         .in("channel_id", authorIds);
       if (error) throw error;
       return (data ?? []).map((row) => row.channel_id as string);
+    },
+  });
+
+  const { data: postComments = [] } = useQuery({
+    queryKey: ["post-comments", postIds],
+    enabled: postIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await db
+        .from("post_comments")
+        .select("id,post_id,user_id,body,created_at,profile:profiles!post_comments_user_id_fkey(username,display_name,avatar_url)")
+        .in("post_id", postIds)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        post_id: string;
+        user_id: string;
+        body: string;
+        created_at: string;
+        profile: { username: string; display_name: string; avatar_url: string | null } | null;
+      }>;
     },
   });
 
@@ -66,6 +92,40 @@ export function PostList({ posts }: { posts: PostRow[] }) {
     onError: (error: Error) => toast.error(error.message || "チャンネル登録に失敗しました"),
   });
 
+  const addComment = useMutation({
+    mutationFn: async ({ postId, body }: { postId: string; body: string }) => {
+      if (!user) throw new Error("ログインが必要です");
+      const trimmed = body.trim();
+      if (!trimmed) throw new Error("コメントを入力してください");
+      if (trimmed.length > 1000) throw new Error("コメントは1000文字以内にしてください");
+      const { error } = await db.from("post_comments").insert({
+        post_id: postId,
+        user_id: user.id,
+        body: trimmed,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async (_, variables) => {
+      setCommentDrafts((current) => ({ ...current, [variables.postId]: "" }));
+      await queryClient.invalidateQueries({ queryKey: ["post-comments"] });
+      toast.success("コメントしました");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const removeComment = useMutation({
+    mutationFn: async (id: string) => {
+      if (!user) throw new Error("ログインが必要です");
+      const { error } = await db.from("post_comments").delete().eq("id", id).eq("user_id", user.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["post-comments"] });
+      toast.success("コメントを削除しました");
+    },
+    onError: (error: Error) => toast.error(error.message || "コメントを削除できませんでした"),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("posts").delete().eq("id", id);
@@ -91,6 +151,8 @@ export function PostList({ posts }: { posts: PostRow[] }) {
       {posts.map((post) => {
         const isOwnPost = user?.id === post.user_id;
         const isSubscribed = subscriptions.includes(post.user_id);
+        const comments = postComments.filter((comment) => comment.post_id === post.id);
+        const draft = commentDrafts[post.id] ?? "";
 
         return (
           <li key={post.id} className="rounded-xl border border-border bg-card p-4 shadow-card">
@@ -136,6 +198,81 @@ export function PostList({ posts }: { posts: PostRow[] }) {
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">
                   {post.body}
                 </p>
+
+                <div className="mt-3 border-t border-border pt-3">
+                  <div className="flex items-center gap-1 text-sm font-medium">
+                    <MessageCircle className="size-4" />
+                    コメント {comments.length}
+                  </div>
+
+                  {user ? (
+                    <form
+                      className="mt-2 flex gap-2"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        addComment.mutate({ postId: post.id, body: draft });
+                      }}
+                    >
+                      <Textarea
+                        value={draft}
+                        onChange={(event) =>
+                          setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))
+                        }
+                        placeholder="この投稿にコメント..."
+                        rows={2}
+                        maxLength={1000}
+                        aria-label="投稿へのコメント"
+                        className="min-h-[52px]"
+                      />
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="mt-auto shrink-0"
+                        disabled={addComment.isPending || !draft.trim()}
+                        aria-label="コメントを送信"
+                      >
+                        <Send className="size-4" />
+                      </Button>
+                    </form>
+                  ) : (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      <Link to="/auth" className="text-primary underline">ログイン</Link>するとコメントできます。
+                    </p>
+                  )}
+
+                  {comments.length > 0 ? (
+                    <div className="mt-3 space-y-3">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-2 pl-2">
+                          <UserAvatar
+                            src={comment.profile?.avatar_url ?? null}
+                            name={comment.profile?.display_name ?? "?"}
+                            className="size-7"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              {comment.profile?.display_name ?? "不明なユーザー"} · {formatDate(comment.created_at)}
+                            </p>
+                            <p className="whitespace-pre-wrap break-words text-sm">{comment.body}</p>
+                            {user?.id === comment.user_id ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-1 h-7 px-2"
+                                disabled={removeComment.isPending}
+                                onClick={() => removeComment.mutate(comment.id)}
+                                aria-label="コメントを削除"
+                              >
+                                <Trash2 className="size-3" />
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               {isOwnPost ? (
                 <Button
