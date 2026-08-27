@@ -105,6 +105,14 @@
   }
 }
 
+/* プロフィールのチャンネル名はスマホでも途中で切らず、複数行で表示する。 */
+main h1.text-2xl.font-extrabold {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 @utility hero-surface {
   background: var(--hero-gradient);
 }
