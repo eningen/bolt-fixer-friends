@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart } from "lucide-react";
+import { Bot, Heart, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +36,6 @@ function VideoDetailPage() {
   const { data: video, isPending } = useQuery(videoDetailQuery(videoId));
   const { data: likes } = useQuery(videoLikesQuery(videoId));
 
-  // 10秒以上再生されたら再生回数を1増やす
   const counted = useRef(false);
   const watched = useRef(0);
   const queryClientRef = queryClient;
@@ -59,7 +58,6 @@ function VideoDetailPage() {
     if (watched.current >= 10) countView();
   };
 
-  // YouTube などの埋め込みは再生位置を取れないため、表示から10秒後にカウント
   const isEmbed = Boolean(video && !video.storage_path);
   useEffect(() => {
     if (!isEmbed) return;
@@ -90,6 +88,23 @@ function VideoDetailPage() {
       void queryClient.invalidateQueries({ queryKey: ["video", videoId, "likes"] });
     },
     onError: () => toast.error("ログインするといいねできます"),
+  });
+
+  const aiReview = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("AI感想を使うにはログインしてください。");
+      const { data, error } = await supabase.functions.invoke("ai-video-review", {
+        body: { videoId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: ["video", videoId, "comments"] });
+      toast.success(data?.reused ? "AI感想はすでにあります" : "Stickman AIが感想をコメントしました！");
+    },
+    onError: (error: Error) => toast.error(error.message || "AI感想の生成に失敗しました。"),
   });
 
   const embedUrl = video ? parseVideoUrl(video.video_url)?.embedUrl : null;
@@ -141,7 +156,7 @@ function VideoDetailPage() {
               {formatViews(video.views)} · {formatRelativeDate(video.created_at)}
             </p>
 
-            <div className="mt-4 flex items-center justify-between gap-4 border-y border-border py-3">
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-border py-3">
               {video.profile ? (
                 <Link
                   to="/u/$username"
@@ -160,16 +175,28 @@ function VideoDetailPage() {
                 <span className="text-sm text-muted-foreground">不明なユーザー</span>
               )}
 
-              <Button
-                variant={liked ? "default" : "secondary"}
-                size="sm"
-                className="rounded-full"
-                onClick={() => toggleLike.mutate()}
-                disabled={toggleLike.isPending}
-              >
-                <Heart className={liked ? "size-4 fill-current" : "size-4"} />
-                {likes?.count ?? 0}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => aiReview.mutate()}
+                  disabled={aiReview.isPending}
+                >
+                  {aiReview.isPending ? <Sparkles className="size-4 animate-pulse" /> : <Bot className="size-4" />}
+                  {aiReview.isPending ? "AIが動画を見ています…" : "AI感想"}
+                </Button>
+                <Button
+                  variant={liked ? "default" : "secondary"}
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => toggleLike.mutate()}
+                  disabled={toggleLike.isPending}
+                >
+                  <Heart className={liked ? "size-4 fill-current" : "size-4"} />
+                  {likes?.count ?? 0}
+                </Button>
+              </div>
             </div>
 
             {video.description ? (
