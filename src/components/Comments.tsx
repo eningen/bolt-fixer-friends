@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Trash2 } from "lucide-react";
+import { Bot, Heart, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,8 @@ interface CommentRow {
   user_id: string;
   body: string;
   created_at: string;
+  is_ai: boolean;
+  ai_model: string | null;
   profile: { username: string; display_name: string; avatar_url: string | null } | null;
   like_count: number;
   liked_by_me: boolean;
@@ -33,7 +35,7 @@ export function Comments({ videoId }: { videoId: string }) {
     queryFn: async (): Promise<CommentRow[]> => {
       const { data, error } = await supabase
         .from("comments")
-        .select("id,video_id,user_id,body,created_at,profile:profiles!comments_user_id_fkey(username,display_name,avatar_url)")
+        .select("id,video_id,user_id,body,created_at,is_ai,ai_model,profile:profiles!comments_user_id_fkey(username,display_name,avatar_url)")
         .eq("video_id", videoId)
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -79,9 +81,6 @@ export function Comments({ videoId }: { videoId: string }) {
           .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        // The database enforces one like per user/comment. Use an idempotent
-        // upsert so a stale UI or a double request cannot fail with a
-        // duplicate-key error.
         const { error } = await supabase
           .from("comment_likes")
           .upsert(
@@ -123,13 +122,25 @@ export function Comments({ videoId }: { videoId: string }) {
           <li className="text-sm text-muted-foreground">まだコメントはありません。</li>
         ) : comments.map((comment) => (
           <li key={comment.id} className="flex gap-3">
-            {comment.profile ? <Link to="/u/$username" params={{ username: comment.profile.username }}><UserAvatar src={comment.profile.avatar_url} name={comment.profile.display_name} className="size-8" /></Link> : <UserAvatar src={null} name="?" className="size-8" />}
+            {comment.is_ai ? (
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary" aria-label="Stickman AI">
+                <Bot className="size-4" />
+              </div>
+            ) : comment.profile ? (
+              <Link to="/u/$username" params={{ username: comment.profile.username }}><UserAvatar src={comment.profile.avatar_url} name={comment.profile.display_name} className="size-8" /></Link>
+            ) : (
+              <UserAvatar src={null} name="?" className="size-8" />
+            )}
             <div className="min-w-0 flex-1">
-              <p className="text-xs text-muted-foreground">{comment.profile?.display_name ?? "不明なユーザー"} · {formatRelativeDate(comment.created_at)}</p>
+              <p className="text-xs text-muted-foreground">
+                {comment.is_ai ? "Stickman AI" : comment.profile?.display_name ?? "不明なユーザー"}
+                {comment.is_ai ? <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-primary">AI</span> : null}
+                <span className="ml-1">· {formatRelativeDate(comment.created_at)}</span>
+              </p>
               <p className="mt-1 whitespace-pre-wrap break-words text-sm">{comment.body}</p>
               <div className="mt-1 flex items-center gap-1">
                 <Button type="button" variant="ghost" size="sm" aria-label={comment.liked_by_me ? "いいねを解除" : "コメントにいいね"} onClick={() => toggleLike.mutate(comment)} disabled={!user || toggleLike.isPending}><Heart className={`size-4 ${comment.liked_by_me ? "fill-current" : ""}`} /><span>{comment.like_count}</span></Button>
-                {user?.id === comment.user_id ? <Button variant="ghost" size="sm" aria-label="コメントを削除" onClick={() => remove.mutate(comment.id)}><Trash2 className="size-4" /></Button> : null}
+                {user?.id === comment.user_id && !comment.is_ai ? <Button variant="ghost" size="sm" aria-label="コメントを削除" onClick={() => remove.mutate(comment.id)}><Trash2 className="size-4" /></Button> : null}
               </div>
               <CommentReplies commentId={comment.id} />
             </div>
