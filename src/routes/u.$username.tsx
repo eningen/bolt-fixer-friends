@@ -58,6 +58,30 @@ function ProfilePage() {
   const isOwner = Boolean(user && channelId && user.id === channelId);
   const isSubscribed = Boolean(user && subscribers.some((s) => s.subscriber_id === user.id));
 
+  const { data: subscribedChannels = [], isPending: subscriptionsPending } = useQuery({
+    queryKey: ["profile-subscriptions", channelId],
+    enabled: Boolean(channelId),
+    queryFn: async () => {
+      if (!channelId) return [] as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
+      const db = supabase as any;
+      const { data: rows, error } = await db
+        .from("subscriptions")
+        .select("channel_id,created_at")
+        .eq("subscriber_id", channelId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      const ids = (rows ?? []).map((row: { channel_id: string }) => row.channel_id);
+      if (ids.length === 0) return [] as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
+      const { data: channels, error: channelsError } = await db
+        .from("profiles")
+        .select("id,username,display_name,avatar_url")
+        .in("id", ids);
+      if (channelsError) throw channelsError;
+      const byId = new Map((channels ?? []).map((channel: { id: string; username: string; display_name: string; avatar_url: string | null }) => [channel.id, channel]));
+      return ids.map((id: string) => byId.get(id)).filter(Boolean) as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
+    },
+  });
+
   useEffect(() => {
     if (!data || editing) return;
     setDisplayName(data.profile.display_name ?? "");
@@ -138,6 +162,7 @@ function ProfilePage() {
     onSuccess: (result) => {
       toast.success(result === "subscribed" ? "チャンネル登録しました" : "登録を解除しました");
       void queryClient.invalidateQueries({ queryKey: ["channel-subscribers", channelId] });
+      void queryClient.invalidateQueries({ queryKey: ["profile-subscriptions", user?.id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -262,6 +287,34 @@ function ProfilePage() {
             ) : null}
 
             {data.profile.bio ? <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed">{data.profile.bio}</p> : null}
+
+            <section className="mt-8">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h2 className="text-lg font-bold">登録チャンネル</h2>
+                <span className="text-sm text-muted-foreground">{subscribedChannels.length.toLocaleString()} チャンネル</span>
+              </div>
+              {subscriptionsPending ? (
+                <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">登録チャンネルを読み込み中…</div>
+              ) : subscribedChannels.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {subscribedChannels.map((channel) => (
+                    <Link key={channel.id} to="/u/$username" params={{ username: channel.username }} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/50">
+                      <Avatar className="size-12 shrink-0">
+                        <AvatarImage src={channel.avatar_url ?? undefined} alt="" />
+                        <AvatarFallback>{channel.display_name.slice(0, 2)}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{channel.display_name}</p>
+                        <p className="truncate text-sm text-muted-foreground">@{channel.username}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-card p-5 text-sm text-muted-foreground">まだチャンネル登録していません。</div>
+              )}
+            </section>
+
             {isOwner ? <ChannelAnalytics subscribers={subscribers} totalViews={totalViews} videoCount={data.videos.length} /> : null}
 
             <h2 className="mb-4 mt-8 text-lg font-bold">投稿した動画</h2>
