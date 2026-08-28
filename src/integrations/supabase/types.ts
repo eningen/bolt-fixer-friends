@@ -8,9 +8,9 @@ export type Database = {
   public: {
     Tables: {
       comments: {
-        Row: { body: string; created_at: string; id: string; updated_at: string; user_id: string; video_id: string; parent_comment_id: string | null }
-        Insert: { body: string; created_at?: string; id?: string; updated_at?: string; user_id: string; video_id: string; parent_comment_id?: string | null }
-        Update: { body?: string; created_at?: string; id?: string; updated_at?: string; user_id?: string; video_id?: string; parent_comment_id?: string | null }
+        Row: { body: string; created_at: string; id: string; updated_at: string; user_id: string; video_id: string; parent_comment_id: string | null; is_ai: boolean; ai_model: string | null }
+        Insert: { body: string; created_at?: string; id?: string; updated_at?: string; user_id: string; video_id: string; parent_comment_id?: string | null; is_ai?: boolean; ai_model?: string | null }
+        Update: { body?: string; created_at?: string; id?: string; updated_at?: string; user_id?: string; video_id?: string; parent_comment_id?: string | null; is_ai?: boolean; ai_model?: string | null }
         Relationships: [
           { foreignKeyName: "comments_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] },
           { foreignKeyName: "comments_video_id_fkey"; columns: ["video_id"]; isOneToOne: false; referencedRelation: "videos"; referencedColumns: ["id"] },
@@ -40,7 +40,7 @@ export type Database = {
       }
       posts: { Row: { body: string; created_at: string; id: string; updated_at: string; user_id: string }; Insert: { body: string; created_at?: string; id?: string; updated_at?: string; user_id?: string }; Update: { body?: string; created_at?: string; id?: string; updated_at?: string; user_id?: string }; Relationships: [{ foreignKeyName: "posts_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }] }
       profiles: { Row: { avatar_url: string | null; bio: string | null; created_at: string; display_name: string; id: string; updated_at: string; username: string }; Insert: { avatar_url?: string | null; bio?: string | null; created_at?: string; id: string; display_name: string; username: string }; Update: { avatar_url?: string | null; bio?: string | null; created_at?: string; id?: string; updated_at?: string; username?: string }; Relationships: [] }
-      saved_videos: { Row: { created_at: string; id: string; user_id: string; video_id: string }; Insert: { created_at?: string; id?: string; user_id: string; video_id: string }; Update: { created_at?: string; id?: string; user_id?: string; video_id?: string }; Relationships: [] }
+      saved_videos: { Row: { created_at: string; id: string; user_id: string; video_id: string }; Insert: { created_at?: string; id?: string; user_id: string; video_id?: string }; Update: { created_at?: string; id?: string; user_id?: string; video_id?: string }; Relationships: [] }
       subscriptions: { Row: { channel_id: string; created_at: string; id: string; subscriber_id: string }; Insert: { channel_id: string; created_at?: string; id?: string; subscriber_id?: string }; Update: { channel_id?: string; created_at?: string; id?: string; subscriber_id?: string }; Relationships: [] }
       videos: { Row: { created_at: string; description: string | null; id: string; platform: string; storage_path: string | null; thumbnail_url: string | null; title: string; updated_at: string; user_id: string; video_url: string; views: number; youtube_id: string | null }; Insert: { created_at?: string; description?: string | null; id?: string; platform?: string; storage_path?: string | null; thumbnail_url?: string | null; title: string; user_id: string; video_url: string; views?: number; youtube_id?: string | null }; Update: { created_at?: string; description?: string | null; id?: string; platform?: string; storage_path?: string | null; thumbnail_url?: string | null; title?: string; user_id?: string; video_url?: string; views?: number; youtube_id?: string | null }; Relationships: [] }
     }
