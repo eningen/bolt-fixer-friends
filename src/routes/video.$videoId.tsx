@@ -86,59 +86,33 @@ function VideoDetailPage() {
     mutationFn: async () => {
       if (!user) throw new Error("AI感想を使うにはログインしてください。");
 
-      const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
-      const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
-      if (!supabaseUrl || !publishableKey) throw new Error("Supabaseの接続設定を確認してください。");
+      // Use the Supabase SDK for the Edge Function call. This keeps the project URL,
+      // publishable key and auth/session handling in the same place as the rest of the app
+      // and avoids browser-side CORS/preflight failures from manually calling the endpoint.
+      const { data, error } = await supabase.functions.invoke("ai-video-review", {
+        body: { videoId },
+      });
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw new Error(`ログイン情報を取得できませんでした: ${sessionError.message}`);
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error("ログインセッションが切れています。もう一度ログインしてください。");
-
-      let response: Response;
-      try {
-        response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/ai-video-review`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: publishableKey,
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ videoId }),
-        });
-      } catch {
-        throw new Error("AIサーバーに接続できませんでした。ネットワーク接続を確認してください。");
+      if (error) {
+        const context = error.context;
+        let detail = "";
+        if (context instanceof Response) {
+          try {
+            const payload = await context.clone().json();
+            if (payload?.error) detail = `: ${payload.error}`;
+          } catch {
+            // Keep the SDK error when the response is not JSON.
+          }
+          detail = detail || ` (HTTP ${context.status})`;
+        }
+        throw new Error(`AIサーバーに接続できませんでした${detail}`);
       }
 
-      const raw = await response.text();
-      let data: any = null;
-      try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
-
-      if (!response.ok) {
-        throw new Error(data?.error || `AI感想の生成に失敗しました（HTTP ${response.status}）。`);
+      if (!data?.comment && !data?.reused) {
+        throw new Error(data?.error || "AIから感想を受け取れませんでした。");
       }
 
-      // The Edge Function normally saves the AI comment itself. If it only
-      // returns the generated review (for example when a DB write is blocked),
-      // save it through the user's normal authenticated comments path instead.
-      if (data?.comment) return data;
-      if (typeof data?.review === "string" && data.review.trim()) {
-        const { data: inserted, error: insertError } = await supabase
-          .from("comments")
-          .insert({
-            video_id: videoId,
-            user_id: user.id,
-            body: data.review.trim().slice(0, 2000),
-            is_ai: true,
-            ai_model: typeof data?.ai_model === "string" ? data.ai_model : "gemini-3.6-flash",
-          })
-          .select("id,body,created_at,is_ai,ai_model")
-          .single();
-        if (insertError) throw new Error(`AI感想は生成できましたが、コメント保存に失敗しました: ${insertError.message}`);
-        return { comment: inserted, reused: false };
-      }
-
-      throw new Error(data?.error || "AIから感想を受け取れませんでした。");
+      return data;
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["video", videoId, "comments"] });
