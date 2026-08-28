@@ -201,8 +201,14 @@ function UploadPage() {
         .single();
       if (error) throw error;
 
+      // AI感想は投稿処理を待たせずバックグラウンドで生成する。
+      // 生成に失敗しても動画投稿そのものは成功したままにする。
+      void supabase.functions.invoke("ai-video-review", {
+        body: { videoId: data.id },
+      });
+
       await queryClient.invalidateQueries({ queryKey: ["videos"] });
-      toast.success("動画を投稿しました");
+      toast.success("動画を投稿しました。Stickman AIが感想を準備中です！");
       void navigate({ to: "/video/$videoId", params: { videoId: data.id } });
     } catch {
       toast.error("投稿に失敗しました。もう一度お試しください。");
