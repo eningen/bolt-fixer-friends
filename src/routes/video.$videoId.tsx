@@ -86,10 +86,6 @@ function VideoDetailPage() {
     mutationFn: async () => {
       if (!user) throw new Error("AI感想を使うにはログインしてください。");
 
-      // functions.invoke can hide the underlying browser/network error behind
-      // "Failed to send a request to the Edge Function" in some deployments.
-      // Call the function endpoint directly so the actual HTTP response is
-      // handled and surfaced to the user.
       const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
       const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
       if (!supabaseUrl || !publishableKey) throw new Error("Supabaseの接続設定を確認してください。");
@@ -121,10 +117,28 @@ function VideoDetailPage() {
       if (!response.ok) {
         throw new Error(data?.error || `AI感想の生成に失敗しました（HTTP ${response.status}）。`);
       }
-      if (!data?.comment && !data?.reused) {
-        throw new Error(data?.error || "AIから感想を受け取れませんでした。");
+
+      // The Edge Function normally saves the AI comment itself. If it only
+      // returns the generated review (for example when a DB write is blocked),
+      // save it through the user's normal authenticated comments path instead.
+      if (data?.comment) return data;
+      if (typeof data?.review === "string" && data.review.trim()) {
+        const { data: inserted, error: insertError } = await supabase
+          .from("comments")
+          .insert({
+            video_id: videoId,
+            user_id: user.id,
+            body: data.review.trim().slice(0, 2000),
+            is_ai: true,
+            ai_model: typeof data?.ai_model === "string" ? data.ai_model : "gemini-3.6-flash",
+          })
+          .select("id,body,created_at,is_ai,ai_model")
+          .single();
+        if (insertError) throw new Error(`AI感想は生成できましたが、コメント保存に失敗しました: ${insertError.message}`);
+        return { comment: inserted, reused: false };
       }
-      return data;
+
+      throw new Error(data?.error || "AIから感想を受け取れませんでした。");
     },
     onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["video", videoId, "comments"] });
