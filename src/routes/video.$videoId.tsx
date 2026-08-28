@@ -71,33 +71,59 @@ function VideoDetailPage() {
     mutationFn: async () => {
       if (!user) throw new Error("unauthenticated");
       if (liked) {
-        const { error } = await supabase
-          .from("likes")
-          .delete()
-          .eq("video_id", videoId)
-          .eq("user_id", user.id);
+        const { error } = await supabase.from("likes").delete().eq("video_id", videoId).eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase
-          .from("likes")
-          .insert({ video_id: videoId, user_id: user.id });
+        const { error } = await supabase.from("likes").insert({ video_id: videoId, user_id: user.id });
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["video", videoId, "likes"] });
-    },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["video", videoId, "likes"] }),
     onError: () => toast.error("ログインするといいねできます"),
   });
 
   const aiReview = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("AI感想を使うにはログインしてください。");
-      const { data, error } = await supabase.functions.invoke("ai-video-review", {
-        body: { videoId },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+
+      // functions.invoke can hide the underlying browser/network error behind
+      // "Failed to send a request to the Edge Function" in some deployments.
+      // Call the function endpoint directly so the actual HTTP response is
+      // handled and surfaced to the user.
+      const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
+      const publishableKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
+      if (!supabaseUrl || !publishableKey) throw new Error("Supabaseの接続設定を確認してください。");
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw new Error(`ログイン情報を取得できませんでした: ${sessionError.message}`);
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("ログインセッションが切れています。もう一度ログインしてください。");
+
+      let response: Response;
+      try {
+        response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/ai-video-review`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: publishableKey,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ videoId }),
+        });
+      } catch {
+        throw new Error("AIサーバーに接続できませんでした。ネットワーク接続を確認してください。");
+      }
+
+      const raw = await response.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { data = null; }
+
+      if (!response.ok) {
+        throw new Error(data?.error || `AI感想の生成に失敗しました（HTTP ${response.status}）。`);
+      }
+      if (!data?.comment && !data?.reused) {
+        throw new Error(data?.error || "AIから感想を受け取れませんでした。");
+      }
       return data;
     },
     onSuccess: (data) => {
@@ -117,94 +143,42 @@ function VideoDetailPage() {
         {isPending ? (
           <div className="aspect-video w-full animate-pulse rounded-xl bg-surface-strong" />
         ) : !video ? (
-          <EmptyState
-            title="動画が見つかりません"
-            description="削除されたか、URLが間違っている可能性があります。"
-          />
+          <EmptyState title="動画が見つかりません" description="削除されたか、URLが間違っている可能性があります。" />
         ) : (
           <>
             <div className="aspect-video w-full overflow-hidden rounded-xl bg-surface-strong">
               {video.storage_path ? (
-                fileUrl ? (
-                  <video
-                    src={fileUrl}
-                    controls
-                    playsInline
-                    onTimeUpdate={onTimeUpdate}
-                    className="size-full"
-                  />
-                ) : (
-                  <div className="size-full animate-pulse" />
-                )
+                fileUrl ? <video src={fileUrl} controls playsInline onTimeUpdate={onTimeUpdate} className="size-full" /> : <div className="size-full animate-pulse" />
               ) : embedUrl ? (
-                <iframe
-                  src={embedUrl}
-                  title={video.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  className="size-full"
-                />
+                <iframe src={embedUrl} title={video.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; picture-in-picture" allowFullScreen className="size-full" />
               ) : (
-                <div className="flex size-full items-center justify-center text-sm text-muted-foreground">
-                  再生できない動画です
-                </div>
+                <div className="flex size-full items-center justify-center text-sm text-muted-foreground">再生できない動画です</div>
               )}
             </div>
 
             <h1 className="mt-4 text-xl font-bold leading-snug">{video.title}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {formatViews(video.views)} · {formatRelativeDate(video.created_at)}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">{formatViews(video.views)} · {formatRelativeDate(video.created_at)}</p>
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-border py-3">
               {video.profile ? (
-                <Link
-                  to="/u/$username"
-                  params={{ username: video.profile.username }}
-                  className="flex items-center gap-3"
-                >
-                  <Avatar className="size-10">
-                    <AvatarImage src={video.profile.avatar_url ?? undefined} alt="" />
-                    <AvatarFallback className="text-xs">
-                      {video.profile.display_name.slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
+                <Link to="/u/$username" params={{ username: video.profile.username }} className="flex items-center gap-3">
+                  <Avatar className="size-10"><AvatarImage src={video.profile.avatar_url ?? undefined} alt="" /><AvatarFallback className="text-xs">{video.profile.display_name.slice(0, 2)}</AvatarFallback></Avatar>
                   <span className="text-sm font-semibold">{video.profile.display_name}</span>
                 </Link>
-              ) : (
-                <span className="text-sm text-muted-foreground">不明なユーザー</span>
-              )}
+              ) : <span className="text-sm text-muted-foreground">不明なユーザー</span>}
 
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => aiReview.mutate()}
-                  disabled={aiReview.isPending}
-                >
+                <Button variant="secondary" size="sm" className="rounded-full" onClick={() => aiReview.mutate()} disabled={aiReview.isPending}>
                   {aiReview.isPending ? <Sparkles className="size-4 animate-pulse" /> : <Bot className="size-4" />}
                   {aiReview.isPending ? "AIが動画を見ています…" : "AI感想"}
                 </Button>
-                <Button
-                  variant={liked ? "default" : "secondary"}
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => toggleLike.mutate()}
-                  disabled={toggleLike.isPending}
-                >
-                  <Heart className={liked ? "size-4 fill-current" : "size-4"} />
-                  {likes?.count ?? 0}
+                <Button variant={liked ? "default" : "secondary"} size="sm" className="rounded-full" onClick={() => toggleLike.mutate()} disabled={toggleLike.isPending}>
+                  <Heart className={liked ? "size-4 fill-current" : "size-4"} /> {likes?.count ?? 0}
                 </Button>
               </div>
             </div>
 
-            {video.description ? (
-              <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">
-                {video.description}
-              </p>
-            ) : null}
-
+            {video.description ? <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{video.description}</p> : null}
             <Comments videoId={videoId} />
           </>
         )}
