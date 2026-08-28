@@ -32,15 +32,6 @@ function isYouTubeUrl(value: string) {
   return /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(value);
 }
 
-function guessMimeType(pathOrUrl: string) {
-  const clean = pathOrUrl.split("?")[0].toLowerCase();
-  if (clean.endsWith(".webm")) return "video/webm";
-  if (clean.endsWith(".mov")) return "video/quicktime";
-  if (clean.endsWith(".m4v")) return "video/x-m4v";
-  if (clean.endsWith(".avi")) return "video/x-msvideo";
-  return "video/mp4";
-}
-
 function extractOutputText(payload: any): string {
   if (typeof payload?.output_text === "string") return payload.output_text.trim();
   if (typeof payload?.text === "string") return payload.text.trim();
@@ -63,16 +54,14 @@ async function createInteraction(input: Array<Record<string, unknown>>) {
     body: JSON.stringify({
       model: GEMINI_MODEL,
       input,
-      response_format: {
-        type: "text",
-      },
+      response_format: { type: "text" },
     }),
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("Gemini interaction failed", response.status, payload);
-    throw new Error("AIサービスへの接続に失敗しました。");
+    throw new Error(`AIサービスへの接続に失敗しました (HTTP ${response.status})`);
   }
 
   const text = extractOutputText(payload);
@@ -96,9 +85,10 @@ Deno.serve(async (request) => {
     const videoId = typeof body?.videoId === "string" ? body.videoId : "";
     if (!videoId) return json({ error: "動画IDがありません。" }, 400);
 
+    // videos テーブルの実際のスキーマに合わせる。storage_path は存在しないため参照しない。
     const { data: video, error: videoError } = await admin
       .from("videos")
-      .select("id,user_id,title,description,video_url,storage_path,platform")
+      .select("id,user_id,title,description,video_url,platform,youtube_id,thumbnail_url")
       .eq("id", videoId)
       .maybeSingle();
     if (videoError) throw videoError;
@@ -113,28 +103,28 @@ Deno.serve(async (request) => {
     if (existingError) throw existingError;
     if (existing) return json({ comment: existing, reused: true });
 
-    let mediaUrl = video.video_url;
-    let mediaType: Record<string, unknown>;
+    const mediaUrl = video.video_url;
+    if (!mediaUrl) return json({ error: "動画URLがありません。" }, 422);
 
-    if (video.storage_path) {
-      const { data: signed, error: signedError } = await admin.storage
-        .from("videos")
-        .createSignedUrl(video.storage_path, 10 * 60);
-      if (signedError || !signed?.signedUrl) {
-        return json({ error: "動画ファイルをAIに渡せませんでした。" }, 422);
-      }
-      mediaUrl = signed.signedUrl;
-      mediaType = { type: "video", uri: mediaUrl, mime_type: guessMimeType(video.storage_path) };
-    } else if (isYouTubeUrl(mediaUrl)) {
-      mediaType = { type: "video", uri: mediaUrl };
-    } else {
-      mediaType = { type: "video", uri: mediaUrl, mime_type: guessMimeType(mediaUrl) };
-    }
+    // 現在の videos は video_url を正規のメディアURLとして保持している。
+    // YouTube URLも含め、AI側へ動画として渡す。
+    const mediaType: Record<string, unknown> = isYouTubeUrl(mediaUrl)
+      ? { type: "video", uri: mediaUrl }
+      : { type: "video", uri: mediaUrl };
 
-    const prompt = `あなたはStickman videoの公式AIレビュアー「Stickman AI」です。\nこの動画を実際に見て、映像と音声・音楽の両方から分かる範囲で、投稿者が嬉しくなる自然な日本語の感想を書いてください。\nタイトルや説明だけから内容を想像してはいけません。動画から確認できる内容を中心にしてください。\n短すぎず長すぎない、2〜5文程度の具体的な感想にしてください。\n音楽が含まれている場合は、聞き取れる範囲で曲調、雰囲気、歌声や演奏などにも触れてください。\n不確かなことは断定しないでください。\nタイトル: ${video.title}\n説明: ${video.description ?? "なし"}`;
+    const prompt = `あなたはStickman videoの公式AIレビュアー「Stickman AI」です。
+この動画を実際に見て、映像と音声・音楽の両方から分かる範囲で、投稿者が嬉しくなる自然な日本語の感想を書いてください。
+タイトルや説明だけから内容を想像してはいけません。動画から確認できる内容を中心にしてください。
+短すぎず長すぎない、2〜5文程度の具体的な感想にしてください。
+音楽が含まれている場合は、聞き取れる範囲で曲調、雰囲気、歌声や演奏などにも触れてください。
+不確かなことは断定しないでください。
+タイトル: ${video.title}
+説明: ${video.description ?? "なし"}`;
 
     const review = await createInteraction([mediaType, { type: "text", text: prompt }]);
 
+    // AI感想も既存コメントと同じテーブルへ保存する。
+    // service role で実行するため、既存ユーザーのRLSを変更する必要はない。
     const { data: inserted, error: insertError } = await admin
       .from("comments")
       .insert({
@@ -157,7 +147,8 @@ Deno.serve(async (request) => {
           .maybeSingle();
         if (raceWinner) return json({ comment: raceWinner, reused: true });
       }
-      throw insertError;
+      console.error("AI comment insert failed", insertError);
+      return json({ error: `AI感想は生成できましたが、コメント保存に失敗しました: ${insertError.message}` }, 500);
     }
 
     return json({ comment: inserted, reused: false });
