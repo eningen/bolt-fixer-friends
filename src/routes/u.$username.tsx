@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Handshake } from "lucide-react";
+import { Handshake, MessageCircle, UserPlus, Check } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,21 +64,31 @@ function ProfilePage() {
     queryFn: async () => {
       if (!channelId) return [] as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
       const db = supabase as any;
-      const { data: rows, error } = await db
-        .from("subscriptions")
-        .select("channel_id,created_at")
-        .eq("subscriber_id", channelId)
-        .order("created_at", { ascending: false });
+      const { data: rows, error } = await db.from("subscriptions").select("channel_id,created_at").eq("subscriber_id", channelId).order("created_at", { ascending: false });
       if (error) throw error;
       const ids = (rows ?? []).map((row: { channel_id: string }) => row.channel_id);
       if (ids.length === 0) return [] as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
-      const { data: channels, error: channelsError } = await db
-        .from("profiles")
-        .select("id,username,display_name,avatar_url")
-        .in("id", ids);
+      const { data: channels, error: channelsError } = await db.from("profiles").select("id,username,display_name,avatar_url").in("id", ids);
       if (channelsError) throw channelsError;
       const byId = new Map((channels ?? []).map((channel: { id: string; username: string; display_name: string; avatar_url: string | null }) => [channel.id, channel]));
       return ids.map((id: string) => byId.get(id)).filter(Boolean) as Array<{ id: string; username: string; display_name: string; avatar_url: string | null }>;
+    },
+  });
+
+  const { data: friendshipStatus = { friends: false, pending: false, incoming: false } } = useQuery({
+    queryKey: ["friendship-status", user?.id, channelId],
+    enabled: Boolean(user?.id && channelId && !isOwner),
+    queryFn: async () => {
+      const db = supabase as any;
+      const [{ data: friends, error: friendsError }, { data: outgoing, error: outgoingError }, { data: incoming, error: incomingError }] = await Promise.all([
+        db.from("friendships").select("id").or(`and(user_a.eq.${user!.id},user_b.eq.${channelId}),and(user_a.eq.${channelId},user_b.eq.${user!.id})`).limit(1),
+        db.from("friend_requests").select("id").eq("requester_id", user!.id).eq("recipient_id", channelId).eq("status", "pending").limit(1),
+        db.from("friend_requests").select("id").eq("requester_id", channelId).eq("recipient_id", user!.id).eq("status", "pending").limit(1),
+      ]);
+      if (friendsError) throw friendsError;
+      if (outgoingError) throw outgoingError;
+      if (incomingError) throw incomingError;
+      return { friends: Boolean(friends?.length), pending: Boolean(outgoing?.length), incoming: Boolean(incoming?.length) };
     },
   });
 
@@ -103,45 +113,26 @@ function ProfilePage() {
       if (cleanName.length > 40) throw new Error("チャンネル名は40文字以内にしてください");
       if (hasBlockedNameTerm(cleanName)) throw new Error("このチャンネル名は使用できません");
       if (cleanBio.length > 500) throw new Error("概要欄は500文字以内にしてください");
-
       let avatarUrl = data.profile.avatar_url ?? null;
       if (avatarFile) {
         if (!avatarFile.type.startsWith("image/")) throw new Error("画像ファイルを選択してください");
         if (avatarFile.size > 5 * 1024 * 1024) throw new Error("画像は5MB以内にしてください");
-
-        const extensionByType: Record<string, string> = {
-          "image/jpeg": "jpg",
-          "image/png": "png",
-          "image/webp": "webp",
-          "image/gif": "gif",
-        };
+        const extensionByType: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/gif": "gif" };
         const extension = extensionByType[avatarFile.type];
         if (!extension) throw new Error("JPG、PNG、WEBP、GIF画像を選択してください");
-
         const path = `${user.id}/avatar.${extension}`;
-        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatarFile, {
-          upsert: true,
-          contentType: avatarFile.type,
-          cacheControl: "3600",
-        });
+        const { error: uploadError } = await supabase.storage.from("avatars").upload(path, avatarFile, { upsert: true, contentType: avatarFile.type, cacheControl: "3600" });
         if (uploadError) throw new Error(`画像のアップロードに失敗しました: ${uploadError.message}`);
-
         const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(path);
         if (!publicData?.publicUrl) throw new Error("画像URLを取得できませんでした");
         avatarUrl = `${publicData.publicUrl}?v=${Date.now()}`;
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ display_name: cleanName, bio: cleanBio || null, avatar_url: avatarUrl })
-        .eq("id", user.id);
+      const { error } = await supabase.from("profiles").update({ display_name: cleanName, bio: cleanBio || null, avatar_url: avatarUrl }).eq("id", user.id);
       if (error) throw new Error(`プロフィールの保存に失敗しました: ${error.message}`);
     },
     onSuccess: async () => {
       toast.success("チャンネル情報を更新しました");
-      setEditing(false);
-      setAvatarFile(null);
-      setPreviewUrl(null);
+      setEditing(false); setAvatarFile(null); setPreviewUrl(null);
       await queryClient.invalidateQueries({ queryKey: ["profile", username] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -171,24 +162,28 @@ function ProfilePage() {
     mutationFn: async () => {
       if (!user) throw new Error("ログインが必要です");
       if (!channelId || isOwner) throw new Error("このチャンネルにはコラボ依頼を送れません");
-      const content = collabContent.trim();
-      const reason = collabReason.trim();
+      const content = collabContent.trim(); const reason = collabReason.trim();
       if (!content) throw new Error("コラボ内容を入力してください");
       if (!reason) throw new Error("コラボしたい理由を入力してください");
       const db = supabase as any;
-      const { data: requestId, error } = await db.rpc("send_collaboration_request", {
-        p_recipient_id: channelId,
-        p_content: content,
-        p_reason: reason,
-      });
+      const { data: requestId, error } = await db.rpc("send_collaboration_request", { p_recipient_id: channelId, p_content: content, p_reason: reason });
       if (error) throw new Error(error.message);
       return requestId as string;
     },
+    onSuccess: () => { setCollabContent(""); setCollabReason(""); setCollabOpen(false); toast.success("コラボ依頼を送信しました！"); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const sendFriendRequest = useMutation({
+    mutationFn: async () => {
+      if (!user || !channelId || isOwner) throw new Error("このチャンネルにはフレンド申請を送れません");
+      const db = supabase as any;
+      const { error } = await db.rpc("send_friend_request", { p_recipient_id: channelId });
+      if (error) throw new Error(error.message);
+    },
     onSuccess: () => {
-      setCollabContent("");
-      setCollabReason("");
-      setCollabOpen(false);
-      toast.success("コラボ依頼を送信しました！");
+      toast.success("フレンド申請を送信しました！");
+      void queryClient.invalidateQueries({ queryKey: ["friendship-status", user?.id, channelId] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -199,130 +194,29 @@ function ProfilePage() {
     <div className="min-h-screen">
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        {isPending ? (
-          <VideoGridSkeleton count={3} />
-        ) : !data ? (
-          <EmptyState title="ユーザーが見つかりません" description="ユーザー名が変更されたか、削除された可能性があります。" />
-        ) : (
-          <>
-            <div className="flex flex-wrap items-center gap-4">
-              <Avatar className="size-16">
-                <AvatarImage src={previewUrl ?? data.profile.avatar_url ?? undefined} alt="" />
-                <AvatarFallback>{data.profile.display_name.slice(0, 2)}</AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <h1 className="truncate text-2xl font-extrabold">{data.profile.display_name}</h1>
-                <p className="text-sm text-muted-foreground">@{data.profile.username}・登録者 {subscribers.length.toLocaleString()} 人</p>
-              </div>
-              {isOwner ? (
-                <Button variant="secondary" className="rounded-full" onClick={() => setEditing((value) => !value)}>
-                  {editing ? "編集を閉じる" : "チャンネルを編集"}
-                </Button>
-              ) : user ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>
-                    {isSubscribed ? "登録済み" : "チャンネル登録"}
-                  </Button>
-                  <Button variant="outline" className="rounded-full" onClick={() => setCollabOpen((value) => !value)}>
-                    <Handshake className="mr-2 size-4" />
-                    コラボ
-                  </Button>
-                </div>
-              ) : (
-                <Button asChild variant="default" className="rounded-full"><Link to="/auth">ログインして登録</Link></Button>
-              )}
-            </div>
+        {isPending ? <VideoGridSkeleton count={3} /> : !data ? <EmptyState title="ユーザーが見つかりません" description="ユーザー名が変更されたか、削除された可能性があります。" /> : <>
+          <div className="flex flex-wrap items-center gap-4">
+            <Avatar className="size-16"><AvatarImage src={previewUrl ?? data.profile.avatar_url ?? undefined} alt="" /><AvatarFallback>{data.profile.display_name.slice(0, 2)}</AvatarFallback></Avatar>
+            <div className="min-w-0 flex-1"><h1 className="truncate text-2xl font-extrabold">{data.profile.display_name}</h1><p className="text-sm text-muted-foreground">@{data.profile.username}・登録者 {subscribers.length.toLocaleString()} 人</p></div>
+            {isOwner ? <Button variant="secondary" className="rounded-full" onClick={() => setEditing((value) => !value)}>{editing ? "編集を閉じる" : "チャンネルを編集"}</Button> : user ? <div className="flex flex-wrap gap-2">
+              <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>{isSubscribed ? "登録済み" : "チャンネル登録"}</Button>
+              {friendshipStatus.friends ? <Button asChild variant="outline" className="rounded-full"><Link to="/messages/$username" params={{ username: data.profile.username }}><MessageCircle className="mr-2 size-4" />DM</Link></Button> : friendshipStatus.pending ? <Button variant="secondary" className="rounded-full" disabled><Check className="mr-2 size-4" />申請済み</Button> : friendshipStatus.incoming ? <Button variant="secondary" className="rounded-full" disabled><UserPlus className="mr-2 size-4" />申請が届いています</Button> : <Button variant="outline" className="rounded-full" disabled={sendFriendRequest.isPending} onClick={() => sendFriendRequest.mutate()}><UserPlus className="mr-2 size-4" />フレンド申請</Button>}
+              <Button variant="outline" className="rounded-full" onClick={() => setCollabOpen((value) => !value)}><Handshake className="mr-2 size-4" />コラボ</Button>
+            </div> : <Button asChild variant="default" className="rounded-full"><Link to="/auth">ログインして登録</Link></Button>}
+          </div>
 
-            {!isOwner && user && collabOpen ? (
-              <section className="mt-6 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-lg font-bold">🤝 コラボ依頼を送る</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">{data.profile.display_name} さんにコラボ内容と理由を送ります。</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setCollabOpen(false)}>閉じる</Button>
-                </div>
-                <div className="mt-4 space-y-4">
-                  <label className="block text-sm font-medium">コラボ内容
-                    <Textarea value={collabContent} onChange={(e) => setCollabContent(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="どんなコラボをしたいですか？" />
-                    <span className="mt-1 block text-xs text-muted-foreground">{collabContent.length}/1000</span>
-                  </label>
-                  <label className="block text-sm font-medium">コラボしたい理由
-                    <Textarea value={collabReason} onChange={(e) => setCollabReason(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="なぜこのチャンネルとコラボしたいですか？" />
-                    <span className="mt-1 block text-xs text-muted-foreground">{collabReason.length}/1000</span>
-                  </label>
-                  <Button disabled={sendCollaboration.isPending || !collabContent.trim() || !collabReason.trim()} onClick={() => sendCollaboration.mutate()}>
-                    {sendCollaboration.isPending ? "送信中…" : "コラボ依頼を送信"}
-                  </Button>
-                </div>
-              </section>
-            ) : null}
+          {!isOwner && user && collabOpen ? <section className="mt-6 max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 p-5"><div className="flex items-start justify-between gap-3"><div><h2 className="text-lg font-bold">🤝 コラボ依頼を送る</h2><p className="mt-1 text-sm text-muted-foreground">{data.profile.display_name} さんにコラボ内容と理由を送ります。</p></div><Button variant="ghost" size="sm" onClick={() => setCollabOpen(false)}>閉じる</Button></div><div className="mt-4 space-y-4"><label className="block text-sm font-medium">コラボ内容<Textarea value={collabContent} onChange={(e) => setCollabContent(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="どんなコラボをしたいですか？" /><span className="mt-1 block text-xs text-muted-foreground">{collabContent.length}/1000</span></label><label className="block text-sm font-medium">コラボしたい理由<Textarea value={collabReason} onChange={(e) => setCollabReason(e.target.value)} maxLength={1000} rows={4} className="mt-2" placeholder="なぜこのチャンネルとコラボしたいですか？" /><span className="mt-1 block text-xs text-muted-foreground">{collabReason.length}/1000</span></label><Button disabled={sendCollaboration.isPending || !collabContent.trim() || !collabReason.trim()} onClick={() => sendCollaboration.mutate()}>{sendCollaboration.isPending ? "送信中…" : "コラボ依頼を送信"}</Button></div></section> : null}
 
-            {isOwner && editing ? (
-              <section className="mt-6 max-w-2xl rounded-2xl border p-5">
-                <h2 className="text-lg font-bold">チャンネル情報を編集</h2>
-                <div className="mt-4 space-y-4">
-                  <label className="block text-sm font-medium">チャンネル名
-                    <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} className="mt-2 w-full rounded-xl border bg-background px-3 py-2 outline-none focus:ring-2" placeholder="チャンネル名" />
-                  </label>
-                  <label className="block text-sm font-medium">概要欄
-                    <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={5} className="mt-2 w-full resize-y rounded-xl border bg-background px-3 py-2 outline-none focus:ring-2" placeholder="チャンネルについて紹介しましょう" />
-                  </label>
-                  <label className="block text-sm font-medium">アイコン画像
-                    <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="mt-2 block w-full text-sm" onChange={(e) => {
-                      const file = e.target.files?.[0] ?? null;
-                      if (!file) return;
-                      if (file.size > 5 * 1024 * 1024) { toast.error("画像は5MB以内にしてください"); return; }
-                      setAvatarFile(file);
-                      setPreviewUrl(URL.createObjectURL(file));
-                    }} />
-                    <span className="mt-1 block text-xs text-muted-foreground">PNG / JPG / WEBP / GIF、5MBまで</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <Button disabled={saveProfile.isPending} onClick={() => saveProfile.mutate()}>{saveProfile.isPending ? "保存中…" : "保存する"}</Button>
-                    <Button variant="ghost" onClick={() => setEditing(false)}>キャンセル</Button>
-                  </div>
-                </div>
-              </section>
-            ) : null}
+          {isOwner && editing ? <section className="mt-6 max-w-2xl rounded-2xl border p-5"><h2 className="text-lg font-bold">チャンネル情報を編集</h2><div className="mt-4 space-y-4"><label className="block text-sm font-medium">チャンネル名<input value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={40} className="mt-2 w-full rounded-xl border bg-background px-3 py-2 outline-none focus:ring-2" placeholder="チャンネル名" /></label><label className="block text-sm font-medium">概要欄<textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={500} rows={5} className="mt-2 w-full resize-y rounded-xl border bg-background px-3 py-2 outline-none focus:ring-2" placeholder="チャンネルについて紹介しましょう" /></label><label className="block text-sm font-medium">アイコン画像<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="mt-2 block w-full text-sm" onChange={(e) => { const file = e.target.files?.[0] ?? null; if (!file) return; if (file.size > 5 * 1024 * 1024) { toast.error("画像は5MB以内にしてください"); return; } setAvatarFile(file); setPreviewUrl(URL.createObjectURL(file)); }} /><span className="mt-1 block text-xs text-muted-foreground">PNG / JPG / WEBP / GIF、5MBまで</span></label><div className="flex gap-2"><Button disabled={saveProfile.isPending} onClick={() => saveProfile.mutate()}>{saveProfile.isPending ? "保存中…" : "保存する"}</Button><Button variant="ghost" onClick={() => setEditing(false)}>キャンセル</Button></div></div></section> : null}
 
-            {data.profile.bio ? <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed">{data.profile.bio}</p> : null}
+          {data.profile.bio ? <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed">{data.profile.bio}</p> : null}
 
-            <section className="mt-8">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold">登録チャンネル</h2>
-                <span className="text-sm text-muted-foreground">{subscribedChannels.length.toLocaleString()} チャンネル</span>
-              </div>
-              {subscriptionsPending ? (
-                <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">登録チャンネルを読み込み中…</div>
-              ) : subscribedChannels.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {subscribedChannels.map((channel) => (
-                    <Link key={channel.id} to="/u/$username" params={{ username: channel.username }} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/50">
-                      <Avatar className="size-12 shrink-0">
-                        <AvatarImage src={channel.avatar_url ?? undefined} alt="" />
-                        <AvatarFallback>{channel.display_name.slice(0, 2)}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">{channel.display_name}</p>
-                        <p className="truncate text-sm text-muted-foreground">@{channel.username}</p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-card p-5 text-sm text-muted-foreground">まだチャンネル登録していません。</div>
-              )}
-            </section>
+          <section className="mt-8"><div className="mb-4 flex items-center justify-between gap-3"><h2 className="text-lg font-bold">登録チャンネル</h2><span className="text-sm text-muted-foreground">{subscribedChannels.length.toLocaleString()} チャンネル</span></div>{subscriptionsPending ? <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">登録チャンネルを読み込み中…</div> : subscribedChannels.length > 0 ? <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{subscribedChannels.map((channel) => <Link key={channel.id} to="/u/$username" params={{ username: channel.username }} className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition-colors hover:bg-muted/50"><Avatar className="size-12 shrink-0"><AvatarImage src={channel.avatar_url ?? undefined} alt="" /><AvatarFallback>{channel.display_name.slice(0, 2)}</AvatarFallback></Avatar><div className="min-w-0"><p className="truncate font-semibold">{channel.display_name}</p><p className="truncate text-sm text-muted-foreground">@{channel.username}</p></div></Link>)}</div> : <div className="rounded-2xl border border-dashed border-border bg-card p-5 text-sm text-muted-foreground">まだチャンネル登録していません。</div>}</section>
 
-            {isOwner ? <ChannelAnalytics subscribers={subscribers} totalViews={totalViews} videoCount={data.videos.length} /> : null}
-
-            <h2 className="mb-4 mt-8 text-lg font-bold">投稿した動画</h2>
-            {data.videos.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{data.videos.map((video) => <VideoCard key={video.id} video={video} />)}</div>
-            ) : <EmptyState title="まだ投稿がありません" description="最初の動画を待ちましょう。" />}
-          </>
-        )}
+          {isOwner ? <ChannelAnalytics subscribers={subscribers} totalViews={totalViews} videoCount={data.videos.length} /> : null}
+          <h2 className="mb-4 mt-8 text-lg font-bold">投稿した動画</h2>
+          {data.videos.length > 0 ? <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{data.videos.map((video) => <VideoCard key={video.id} video={video} />)}</div> : <EmptyState title="まだ投稿がありません" description="最初の動画を待ちましょう。" />}
+        </>}
       </main>
     </div>
   );
