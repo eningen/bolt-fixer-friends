@@ -27,10 +27,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
   const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
   const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
 
@@ -44,7 +41,7 @@ function createSupabaseClient() {
     throw new Error(message);
   }
 
-  return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  const client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {
       fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
     },
@@ -54,16 +51,101 @@ function createSupabaseClient() {
       autoRefreshToken: true,
     }
   });
+
+  // The friend flow used to depend on PostgREST RPC schema-cache discovery.
+  // Keep the existing rpc call sites working, but execute these two operations
+  // through normal table writes instead. Database triggers create the matching
+  // activity notifications, so the flow no longer depends on RPC discovery.
+  const originalRpc = client.rpc.bind(client);
+  const customRpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
+    if (fn === 'send_friend_request') {
+      const recipientId = String(args?.p_recipient_id ?? '');
+      return (async () => {
+        const { data: sessionData } = await client.auth.getSession();
+        const currentUserId = sessionData.session?.user?.id;
+        if (!currentUserId) return { data: null, error: new Error('ログインが必要です') };
+        if (!recipientId || recipientId === currentUserId) return { data: null, error: new Error('このチャンネルにはフレンド申請を送れません') };
+
+        const { data: existingFriend, error: friendError } = await client
+          .from('friendships')
+          .select('id')
+          .or(`and(user_a.eq.${currentUserId},user_b.eq.${recipientId}),and(user_a.eq.${recipientId},user_b.eq.${currentUserId})`)
+          .limit(1);
+        if (friendError) return { data: null, error: friendError };
+        if (existingFriend?.length) return { data: null, error: new Error('すでにフレンドです') };
+
+        const { data: pending, error: pendingError } = await client
+          .from('friend_requests')
+          .select('id')
+          .eq('requester_id', currentUserId)
+          .eq('recipient_id', recipientId)
+          .eq('status', 'pending')
+          .limit(1);
+        if (pendingError) return { data: null, error: pendingError };
+        if (pending?.length) return { data: null, error: new Error('フレンド申請はすでに送信されています') };
+
+        const { data: request, error: insertError } = await client
+          .from('friend_requests')
+          .insert({ requester_id: currentUserId, recipient_id: recipientId, status: 'pending' })
+          .select('id')
+          .single();
+        if (insertError) return { data: null, error: insertError };
+        return { data: request.id, error: null };
+      })() as any;
+    }
+
+    if (fn === 'accept_friend_request') {
+      const requestId = String(args?.p_request_id ?? '');
+      return (async () => {
+        const { data: sessionData } = await client.auth.getSession();
+        const currentUserId = sessionData.session?.user?.id;
+        if (!currentUserId) return { data: null, error: new Error('ログインが必要です') };
+        if (!requestId) return { data: null, error: new Error('フレンド申請が見つかりません') };
+
+        const { data: request, error: requestError } = await client
+          .from('friend_requests')
+          .select('id,requester_id,recipient_id,status')
+          .eq('id', requestId)
+          .eq('recipient_id', currentUserId)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (requestError) return { data: null, error: requestError };
+        if (!request) return { data: null, error: new Error('有効なフレンド申請が見つかりません') };
+
+        const userA = request.requester_id < request.recipient_id ? request.requester_id : request.recipient_id;
+        const userB = request.requester_id < request.recipient_id ? request.recipient_id : request.requester_id;
+        const { error: friendshipError } = await client
+          .from('friendships')
+          .upsert({ user_a: userA, user_b: userB }, { onConflict: 'user_a,user_b', ignoreDuplicates: true });
+        if (friendshipError) return { data: null, error: friendshipError };
+
+        const { error: updateError } = await client
+          .from('friend_requests')
+          .update({ status: 'accepted' })
+          .eq('id', requestId)
+          .eq('recipient_id', currentUserId)
+          .eq('status', 'pending');
+        if (updateError) return { data: null, error: updateError };
+        return { data: true, error: null };
+      })() as any;
+    }
+
+    return originalRpc(fn as any, args as any, options as any);
+  }) as typeof client.rpc;
+
+  return new Proxy(client, {
+    get(target, prop, receiver) {
+      if (prop === 'rpc') return customRpc;
+      return Reflect.get(target, prop, receiver);
+    },
+  });
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
   get(_, prop, receiver) {
     if (!_supabase) _supabase = createSupabaseClient();
     return Reflect.get(_supabase, prop, receiver);
   },
 });
-
