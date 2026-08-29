@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +33,7 @@ function label(item: NotificationRow) {
     case "comment": return `${who} さんがあなたの動画にコメントしました`;
     case "subscribe": return `${who} さんがあなたのチャンネルを登録しました`;
     case "new_video": return `${who} さんが新しい動画を投稿しました`;
+    case "friend_request": return item.metadata?.accepted ? `${who} さんがフレンド申請を許可しました` : `${who} さんからフレンド申請が届きました`;
   }
 }
 
@@ -42,10 +44,7 @@ function MailboxCard({ item, onRead }: { item: MailboxMessage; onRead: (id: stri
       <div className="flex items-start gap-3">
         <div className={cn("mt-1 flex size-9 shrink-0 items-center justify-center rounded-full", isImportant ? "bg-amber-500/15 text-amber-700" : "bg-primary/10 text-primary")}>{isImportant ? "⭐" : "✉"}</div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{item.title}</p>{isImportant ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-700">最重要メール</span> : null}</div>
-            {!item.read ? <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" /> : null}
-          </div>
+          <div className="flex flex-wrap items-start justify-between gap-2"><div className="flex flex-wrap items-center gap-2"><p className="font-semibold">{item.title}</p>{isImportant ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-700">最重要メール</span> : null}</div>{!item.read ? <span className="mt-1 size-2 shrink-0 rounded-full bg-primary" /> : null}</div>
           {item.sender ? <p className="mt-1 text-xs font-medium text-muted-foreground">送信者：{item.sender.display_name} @{item.sender.username}</p> : null}
           <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{item.body}</p>
           <p className="mt-2 text-xs text-muted-foreground">{formatRelativeDate(item.created_at)}</p>
@@ -73,71 +72,46 @@ function NotificationsPage() {
   const isAdmin = user?.id === "aff7aa26-32e9-4595-bcf1-09fd0f3bd720";
 
   const enableBrowserNotifications = async () => {
-    if (typeof Notification === "undefined") {
-      setNotificationPermission("unsupported");
-      toast.info("このブラウザは通知に対応していません");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setNotificationPermission("denied");
-      toast.info("ブラウザの設定から、このサイトの通知を許可してください");
-      return;
-    }
-    if (Notification.permission === "granted") {
-      setNotificationPermission("granted");
-      toast.success("通知はすでに有効です");
-      return;
-    }
-    try {
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      if (permission === "granted") toast.success("通知を許可しました");
-      else if (permission === "denied") toast.info("ブラウザの設定から、このサイトの通知を許可してください");
-    } catch {
-      toast.info("ブラウザの設定から通知を確認してください");
-    }
+    if (typeof Notification === "undefined") { setNotificationPermission("unsupported"); toast.info("このブラウザは通知に対応していません"); return; }
+    if (Notification.permission === "denied") { setNotificationPermission("denied"); toast.info("ブラウザの設定から、このサイトの通知を許可してください"); return; }
+    if (Notification.permission === "granted") { setNotificationPermission("granted"); toast.success("通知はすでに有効です"); return; }
+    try { const permission = await Notification.requestPermission(); setNotificationPermission(permission); if (permission === "granted") toast.success("通知を許可しました"); else if (permission === "denied") toast.info("ブラウザの設定から、このサイトの通知を許可してください"); } catch { toast.info("ブラウザの設定から通知を確認してください"); }
   };
 
   const markAllRead = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error("ログインが必要です");
-      const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false);
-      if (error) throw error;
-    },
+    mutationFn: async () => { if (!user) throw new Error("ログインが必要です"); const { error } = await supabase.from("notifications").update({ read: true }).eq("user_id", user.id).eq("read", false); if (error) throw error; },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
     onError: () => toast.error("更新できませんでした"),
   });
 
   const markRead = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => { const { error } = await supabase.from("notifications").update({ read: true }).eq("id", id); if (error) throw error; },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
   });
 
   const markMailboxRead = useMutation({
-    mutationFn: async (id: string) => {
-      const db = supabase as any;
-      const { error } = await db.from("mailbox_messages").update({ read: true }).eq("id", id).eq("user_id", user!.id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => { const db = supabase as any; const { error } = await db.from("mailbox_messages").update({ read: true }).eq("id", id).eq("user_id", user!.id); if (error) throw error; },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["mailbox", user?.id] }),
   });
 
-  const publish = useMutation({
-    mutationFn: async () => {
+  const acceptFriend = useMutation({
+    mutationFn: async (requestId: string) => {
+      if (!user) throw new Error("ログインが必要です");
       const db = supabase as any;
-      const { data, error } = await db.rpc("publish_announcement", { p_title: title, p_body: body });
-      if (error) throw error;
-      return data as number;
+      const { error } = await db.rpc("accept_friend_request", { p_request_id: requestId });
+      if (error) throw new Error(error.message);
     },
-    onSuccess: (count) => {
-      setTitle("");
-      setBody("");
-      toast.success(`${count}人にアップデートを配信しました`);
-      void queryClient.invalidateQueries({ queryKey: ["mailbox"] });
+    onSuccess: () => {
+      toast.success("フレンド追加完了！");
+      void queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
+      void queryClient.invalidateQueries({ queryKey: ["friendship-status"] });
     },
+    onError: (error: Error) => toast.error(error.message || "フレンド申請を許可できませんでした"),
+  });
+
+  const publish = useMutation({
+    mutationFn: async () => { const db = supabase as any; const { data, error } = await db.rpc("publish_announcement", { p_title: title, p_body: body }); if (error) throw error; return data as number; },
+    onSuccess: (count) => { setTitle(""); setBody(""); toast.success(`${count}人にアップデートを配信しました`); void queryClient.invalidateQueries({ queryKey: ["mailbox"] }); },
     onError: (error: Error) => toast.error(error.message || "配信に失敗しました"),
   });
 
@@ -153,7 +127,12 @@ function NotificationsPage() {
 
         <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">📬 メールボックス</h2></div>{!user && !loading ? <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-border py-16"><p className="text-sm text-muted-foreground">ログインするとお知らせが届きます。</p><Button asChild><Link to="/auth">ログイン</Link></Button></div> : mailboxPending || loading ? <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-surface-strong" />)}</div> : mailbox.length === 0 ? <EmptyState title="お知らせはまだありません" description="運営からのアップデートやコラボ依頼などがここに届きます。" /> : <div className="space-y-3">{[...mailbox].sort((a, b) => Number(b.category === "important") - Number(a.category === "important") || new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).map((item) => <MailboxCard key={item.id} item={item} onRead={(id) => markMailboxRead.mutate(id)} />)}</div>}</section>
 
-        <section className="mt-10"><h2 className="mb-3 text-lg font-bold">🔔 アクティビティ通知</h2>{notificationsPending || loading ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-strong" />)}</div> : notifications.length === 0 ? <EmptyState title="通知はまだありません" description="いいね・コメント・チャンネル登録などがあるとここに表示されます。" /> : <ul className="space-y-2">{notifications.map((item) => { const content = <div className="flex items-center gap-3"><UserAvatar src={item.actor?.avatar_url} name={item.actor?.display_name} className="size-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{label(item)}</p><p className="truncate text-xs text-muted-foreground">{item.video?.title ? `${item.video.title} · ` : ""}{formatRelativeDate(item.created_at)}</p></div>{!item.read ? <span className="size-2 rounded-full bg-primary" /> : null}</div>; const className = cn("block rounded-lg border border-border p-3 transition-colors hover:bg-accent", !item.read && "bg-surface"); return <li key={item.id}>{item.video_id ? <Link to="/video/$videoId" params={{ videoId: item.video_id }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : item.actor ? <Link to="/u/$username" params={{ username: item.actor.username }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : <div className={className}>{content}</div>}</li>; })}</ul>}</section>
+        <section className="mt-10"><h2 className="mb-3 text-lg font-bold">🔔 アクティビティ通知</h2>{notificationsPending || loading ? <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-16 animate-pulse rounded-lg bg-surface-strong" />)}</div> : notifications.length === 0 ? <EmptyState title="通知はまだありません" description="いいね・コメント・チャンネル登録などがあるとここに表示されます。" /> : <ul className="space-y-2">{notifications.map((item) => {
+          const isFriendRequest = item.type === "friend_request" && !item.metadata?.accepted;
+          const content = <div className="flex items-center gap-3"><UserAvatar src={item.actor?.avatar_url} name={item.actor?.display_name} className="size-9" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{label(item)}</p><p className="truncate text-xs text-muted-foreground">{item.video?.title ? `${item.video.title} · ` : ""}{formatRelativeDate(item.created_at)}</p></div>{!item.read ? <span className="size-2 rounded-full bg-primary" /> : null}</div>;
+          const className = cn("block rounded-lg border border-border p-3 transition-colors hover:bg-accent", !item.read && "bg-surface");
+          return <li key={item.id}>{isFriendRequest ? <div className={className}><div>{content}</div><Button size="sm" className="mt-3 ml-12" disabled={acceptFriend.isPending} onClick={() => { const requestId = item.metadata?.request_id; if (requestId) acceptFriend.mutate(requestId); }}>{acceptFriend.isPending ? "処理中…" : <><Check className="mr-1.5 size-4" />許可</>}</Button></div> : item.video_id ? <Link to="/video/$videoId" params={{ videoId: item.video_id }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : item.actor ? <Link to="/u/$username" params={{ username: item.actor.username }} className={className} onClick={() => { if (!item.read) markRead.mutate(item.id); }}>{content}</Link> : <div className={className}>{content}</div>}</li>;
+        })}</ul>}</section>
       </main>
     </div>
   );
