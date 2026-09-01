@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 interface ReplyRow {
   id: string;
-  video_id: string;
+  comment_id: string;
   user_id: string;
   body: string;
   created_at: string;
@@ -28,12 +28,13 @@ export function CommentReplies({ commentId }: { commentId: string }) {
   const queryKey = ["comment", commentId, "replies"];
   const { data: replies = [], isPending } = useQuery({
     queryKey,
-    enabled: open,
     queryFn: async (): Promise<ReplyRow[]> => {
       const { data, error } = await supabase
-        .from("comments")
-        .select("id,video_id,user_id,body,created_at,profile:profiles!comments_user_id_fkey(username,display_name,avatar_url)")
-        .eq("parent_comment_id", commentId)
+        .from("comment_replies")
+        .select(
+          "id,comment_id,user_id,body,created_at,profile:profiles!comment_replies_user_id_fkey(username,display_name,avatar_url)",
+        )
+        .eq("comment_id", commentId)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as ReplyRow[];
@@ -46,16 +47,8 @@ export function CommentReplies({ commentId }: { commentId: string }) {
       const trimmed = text.trim();
       if (!trimmed) throw new Error("返信を入力してください");
 
-      const { data: parent, error: parentError } = await supabase
-        .from("comments")
-        .select("video_id")
-        .eq("id", commentId)
-        .single();
-      if (parentError) throw parentError;
-
-      const { error } = await supabase.from("comments").insert({
-        video_id: parent.video_id,
-        parent_comment_id: commentId,
+      const { error } = await supabase.from("comment_replies").insert({
+        comment_id: commentId,
         user_id: user.id,
         body: trimmed,
       });
@@ -71,7 +64,7 @@ export function CommentReplies({ commentId }: { commentId: string }) {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("comments").delete().eq("id", id);
+      const { error } = await supabase.from("comment_replies").delete().eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey }),
@@ -80,9 +73,9 @@ export function CommentReplies({ commentId }: { commentId: string }) {
 
   return (
     <div className="mt-1">
-      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen((value) => !value)} disabled={!user}>
+      <Button type="button" variant="ghost" size="sm" onClick={() => setOpen((value) => !value)}>
         <Reply className="size-4" />
-        {open ? "返信を閉じる" : "返信"}
+        {open ? "返信を閉じる" : replies.length > 0 ? `返信 ${replies.length}件` : "返信"}
       </Button>
 
       {open ? (
@@ -94,7 +87,9 @@ export function CommentReplies({ commentId }: { commentId: string }) {
                 <Button type="submit" size="sm" disabled={post.isPending || !body.trim()}>返信する</Button>
               </div>
             </form>
-          ) : null}
+          ) : (
+            <p className="text-sm text-muted-foreground">ログインすると返信できます。</p>
+          )}
 
           <div className="mt-3 space-y-3">
             {isPending ? <div className="h-8 animate-pulse rounded bg-surface-strong" /> : null}

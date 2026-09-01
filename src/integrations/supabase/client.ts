@@ -59,7 +59,7 @@ function createSupabaseClient() {
   const originalRpc = client.rpc.bind(client);
   const customRpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
     if (fn === 'send_friend_request') {
-      const recipientId = String(args?.p_recipient_id ?? '');
+      const recipientId = String(args?.['p_recipient_id'] ?? '');
       return (async () => {
         const { data: sessionData } = await client.auth.getSession();
         const currentUserId = sessionData.session?.user?.id;
@@ -95,7 +95,7 @@ function createSupabaseClient() {
     }
 
     if (fn === 'accept_friend_request') {
-      const requestId = String(args?.p_request_id ?? '');
+      const requestId = String(args?.['p_request_id'] ?? '');
       return (async () => {
         const { data: sessionData } = await client.auth.getSession();
         const currentUserId = sessionData.session?.user?.id;

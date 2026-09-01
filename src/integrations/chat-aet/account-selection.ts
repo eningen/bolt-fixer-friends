@@ -21,10 +21,10 @@ export async function getChatAetAccount(): Promise<ChatAetAccount | null> {
 
   return {
     id: user.id,
-    email: user.email,
+    email: user.email ?? null,
     displayName:
-      (user.user_metadata?.display_name as string | undefined) ??
-      (user.user_metadata?.name as string | undefined) ??
+      (user.user_metadata?.['display_name'] as string | undefined) ??
+      (user.user_metadata?.['name'] as string | undefined) ??
       null,
   };
 }
