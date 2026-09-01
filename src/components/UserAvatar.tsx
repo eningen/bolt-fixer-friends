@@ -1,4 +1,4 @@
-import { useMediaUrl } from "@/lib/storage";
+import { AVATAR_BUCKET, useMediaUrl } from "@/lib/storage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ export function UserAvatar({
   name: string | null | undefined;
   className?: string;
 }) {
-  const url = useMediaUrl(src);
+  const url = useMediaUrl(src, AVATAR_BUCKET);
   return (
     <Avatar className={cn("size-9", className)}>
       <AvatarImage src={url ?? undefined} alt="" />
@@ -20,3 +20,4 @@ export function UserAvatar({
     </Avatar>
   );
 }
+
