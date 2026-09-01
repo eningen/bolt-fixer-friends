@@ -4,21 +4,23 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export const VIDEO_BUCKET = "videos";
+export const AVATAR_BUCKET = "avatars";
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200MB
+export const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 
 export function isStoragePath(value: string | null | undefined): boolean {
   return Boolean(value) && !/^https?:\/\//i.test(value as string);
 }
 
-function signedUrlQuery(path: string | null | undefined) {
+function signedUrlQuery(path: string | null | undefined, bucket: string) {
   return queryOptions({
-    queryKey: ["storage-url", path],
+    queryKey: ["storage-url", bucket, path],
     enabled: Boolean(path) && isStoragePath(path),
     staleTime: 45 * 60 * 1000,
     queryFn: async (): Promise<string | null> => {
       if (!path) return null;
       const { data, error } = await supabase.storage
-        .from(VIDEO_BUCKET)
+        .from(bucket)
         .createSignedUrl(path, 60 * 60);
       if (error) return null;
       return data.signedUrl;
@@ -27,12 +29,41 @@ function signedUrlQuery(path: string | null | undefined) {
 }
 
 /** http(s) URLはそのまま、ストレージのパスは署名付きURLに変換する */
-export function useMediaUrl(value: string | null | undefined): string | null {
-  const { data } = useQuery(signedUrlQuery(value));
+export function useMediaUrl(
+  value: string | null | undefined,
+  bucket: string = VIDEO_BUCKET,
+): string | null {
+  const { data } = useQuery(signedUrlQuery(value, bucket));
   if (!value) return null;
   if (!isStoragePath(value)) return value;
   return data ?? null;
 }
+
+/** アイコン画像をアップロードして保存先パスを返す */
+export async function uploadAvatarFile(file: File, userId: string): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("画像ファイルを選択してください");
+  if (file.size > MAX_AVATAR_BYTES) throw new Error("画像は5MB以内にしてください");
+  const extensionByType: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+    "image/heic": "heic",
+    "image/heif": "heif",
+  };
+  const extension =
+    extensionByType[file.type.toLowerCase()] ??
+    file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!extension) throw new Error("対応していない画像形式です");
+  const path = `${userId}/avatar-${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: true, cacheControl: "3600" });
+  if (error) throw new Error(`画像のアップロードに失敗しました: ${error.message}`);
+  return path;
+}
+
 
 /** 動画ファイルの先頭付近のフレームからサムネイル画像を作る */
 export async function captureThumbnail(file: File): Promise<Blob | null> {
