@@ -14,6 +14,29 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_badges: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_badges_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comment_likes: {
         Row: {
           comment_id: string
@@ -630,6 +653,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_number_for: { Args: { _user_id: string }; Returns: string }
       increment_video_views: { Args: { _video_id: string }; Returns: undefined }
       is_current_user_admin: { Args: never; Returns: boolean }
       publish_announcement: {
