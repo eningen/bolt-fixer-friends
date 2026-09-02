@@ -11,6 +11,7 @@ import { Header } from "@/components/Header";
 import { ChannelAnalytics } from "@/components/ChannelAnalytics";
 import { EmptyState, VideoCard, VideoGridSkeleton } from "@/components/VideoCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AdminBadge } from "@/components/AdminBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 import { uploadAvatarFile } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
@@ -190,7 +191,7 @@ function ProfilePage() {
         {isPending ? <VideoGridSkeleton count={3} /> : !data ? <EmptyState title="ユーザーが見つかりません" description="ユーザー名が変更されたか、削除された可能性があります。" /> : <>
           <div className="flex flex-wrap items-center gap-4">
             {previewUrl ? <Avatar className="size-16"><AvatarImage src={previewUrl} alt="" /><AvatarFallback>{data.profile.display_name.slice(0, 2)}</AvatarFallback></Avatar> : <UserAvatar className="size-16" src={data.profile.avatar_url} name={data.profile.display_name} />}
-            <div className="min-w-0 flex-1"><h1 className="truncate text-2xl font-extrabold">{data.profile.display_name}</h1><p className="text-sm text-muted-foreground">@{data.profile.username}・登録者 {subscribers.length.toLocaleString()} 人</p></div>
+            <div className="min-w-0 flex-1"><h1 className="flex items-center gap-2 truncate text-2xl font-extrabold">{data.profile.display_name}<AdminBadge userId={data.profile.id} withLabel className="px-2 py-1 text-xs" /></h1><p className="text-sm text-muted-foreground">@{data.profile.username}・登録者 {subscribers.length.toLocaleString()} 人</p></div>
             {isOwner ? <Button variant="secondary" className="rounded-full" onClick={() => setEditing((value) => !value)}>{editing ? "編集を閉じる" : "チャンネルを編集"}</Button> : user ? <div className="flex flex-wrap gap-2">
               <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>{isSubscribed ? "登録済み" : "チャンネル登録"}</Button>
               {friendshipStatus.friends ? <Button asChild variant="outline" className="rounded-full"><Link to="/messages/$username" params={{ username: data.profile.username }}><MessageCircle className="mr-2 size-4" />DM</Link></Button> : friendshipStatus.pending ? <Button variant="secondary" className="rounded-full" disabled><Check className="mr-2 size-4" />申請済み</Button> : friendshipStatus.incoming ? <Button variant="secondary" className="rounded-full" disabled><UserPlus className="mr-2 size-4" />申請が届いています</Button> : <Button variant="outline" className="rounded-full" disabled={sendFriendRequest.isPending} onClick={() => sendFriendRequest.mutate()}><UserPlus className="mr-2 size-4" />フレンド申請</Button>}

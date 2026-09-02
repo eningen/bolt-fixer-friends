@@ -4,6 +4,7 @@ import type { VideoRow } from "@/lib/queries";
 import { formatRelativeDate, formatViews } from "@/lib/video";
 import { useMediaUrl } from "@/lib/storage";
 import { StickmanMark } from "@/components/StickmanMark";
+import { AdminBadge } from "@/components/AdminBadge";
 import { UserAvatar } from "@/components/UserAvatar";
 
 export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
@@ -62,6 +63,7 @@ export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
           </Link>
           <p className="mt-1 truncate text-xs text-muted-foreground">
             {video.profile?.display_name ?? "不明なユーザー"}
+            <AdminBadge userId={video.user_id} className="ml-1" />
           </p>
           <p className="text-xs text-muted-foreground">
             {formatViews(video.views)} · {formatRelativeDate(video.created_at)}
