@@ -10,7 +10,8 @@ import { channelSubscribersQuery, profileQuery } from "@/lib/queries";
 import { Header } from "@/components/Header";
 import { ChannelAnalytics } from "@/components/ChannelAnalytics";
 import { EmptyState, VideoCard, VideoGridSkeleton } from "@/components/VideoCard";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
+import { uploadAvatarFile } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
