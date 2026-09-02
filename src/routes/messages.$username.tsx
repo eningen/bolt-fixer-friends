@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -107,7 +107,7 @@ function MessagesPage() {
       <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-2xl flex-col px-4 py-4 pb-24 md:pb-4">
         <div className="flex items-center gap-3 border-b border-border pb-4">
           <Button asChild variant="ghost" size="icon" className="rounded-full"><Link to="/u/$username" params={{ username: target.username }}><ArrowLeft className="size-5" /></Link></Button>
-          <Avatar className="size-10"><AvatarImage src={target.avatar_url ?? undefined} alt="" /><AvatarFallback>{target.display_name.slice(0, 2)}</AvatarFallback></Avatar>
+          <UserAvatar className="size-10" src={target.avatar_url} name={target.display_name} />
           <div className="min-w-0"><p className="truncate font-bold">{target.display_name}</p><p className="truncate text-xs text-muted-foreground">@{target.username}</p></div>
         </div>
 

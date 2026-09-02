@@ -4,7 +4,7 @@ import type { VideoRow } from "@/lib/queries";
 import { formatRelativeDate, formatViews } from "@/lib/video";
 import { useMediaUrl } from "@/lib/storage";
 import { StickmanMark } from "@/components/StickmanMark";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
   const thumbnailUrl = useMediaUrl(video.thumbnail_url);
@@ -53,12 +53,7 @@ export function VideoCard({ video, rank }: { video: VideoRow; rank?: number }) {
       <div className="mt-3 flex gap-3">
         {video.profile ? (
           <Link to="/u/$username" params={{ username: video.profile.username }} className="shrink-0">
-            <Avatar className="size-9">
-              <AvatarImage src={video.profile.avatar_url ?? undefined} alt="" />
-              <AvatarFallback className="text-xs">
-                {video.profile.display_name.slice(0, 2)}
-              </AvatarFallback>
-            </Avatar>
+            <UserAvatar className="size-9" src={video.profile.avatar_url} name={video.profile.display_name} />
           </Link>
         ) : null}
         <div className="min-w-0">

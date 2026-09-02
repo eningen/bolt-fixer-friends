@@ -126,7 +126,7 @@ function ProfilePage() {
     onSuccess: async () => {
       toast.success("チャンネル情報を更新しました");
       setEditing(false); setAvatarFile(null); setPreviewUrl(null);
-      await queryClient.invalidateQueries({ queryKey: ["profile", username] });
+      await queryClient.invalidateQueries();
     },
     onError: (error: Error) => toast.error(error.message),
   });
