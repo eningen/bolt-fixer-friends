@@ -13,7 +13,7 @@ import { Header } from "@/components/Header";
 import { Comments } from "@/components/Comments";
 import { EmptyState } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/UserAvatar";
 
 export const Route = createFileRoute("/video/$videoId")({
   head: () => ({
@@ -150,7 +150,7 @@ function VideoDetailPage() {
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-y border-border py-3">
               {video.profile ? (
                 <Link to="/u/$username" params={{ username: video.profile.username }} className="flex items-center gap-3">
-                  <Avatar className="size-10"><AvatarImage src={video.profile.avatar_url ?? undefined} alt="" /><AvatarFallback className="text-xs">{video.profile.display_name.slice(0, 2)}</AvatarFallback></Avatar>
+                  <UserAvatar className="size-10" src={video.profile.avatar_url} name={video.profile.display_name} />
                   <span className="text-sm font-semibold">{video.profile.display_name}</span>
                 </Link>
               ) : <span className="text-sm text-muted-foreground">不明なユーザー</span>}
