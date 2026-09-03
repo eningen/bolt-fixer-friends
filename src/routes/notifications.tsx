@@ -105,6 +105,7 @@ function NotificationsPage() {
       toast.success("フレンド追加完了！");
       void queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] });
       void queryClient.invalidateQueries({ queryKey: ["friendship-status"] });
+      void queryClient.invalidateQueries({ queryKey: ["friends"] });
     },
     onError: (error: Error) => toast.error(error.message || "フレンド申請を許可できませんでした"),
   });
