@@ -19,7 +19,7 @@ export const Route = createFileRoute("/search")({
       { title: "動画を検索｜Stickman video" },
       { name: "description", content: "Stickman videoとYouTubeの動画を検索できます。" },
       { property: "og:title", content: "動画を検索｜Stickman video" },
-      { property: "og:description", content: "Stickman videoとYouTubeの動画を検索。" },
+      { property: "og:description", content: "Stickman VideoとYouTubeの動画を検索。" },
     ],
   }),
   component: SearchPage,
@@ -37,10 +37,15 @@ function SearchPage() {
     queryFn: () => (q ? searchYouTubeVideos({ data: q }) : fetchPopularYouTubeVideos()),
     enabled: isYouTube,
     staleTime: 60_000,
+    gcTime: 5 * 60_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   const submitSearch = (nextSource: "stickman" | "youtube") => {
-    void navigate({ to: "/search", search: { q: term.trim() || undefined, source: nextSource } });
+    const nextQuery = term.trim();
+    void navigate({ to: "/search", search: { q: nextQuery || undefined, source: nextSource } });
   };
 
   return (
