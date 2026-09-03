@@ -51,42 +51,47 @@ function createSupabaseClient() {
     }
   });
 
-  // Keep friend operations working without depending on PostgREST RPC schema-cache discovery.
-  // A repeated request replaces the old pending request instead of hitting the pending unique constraint.
+  // The friend flow used to depend on PostgREST RPC schema-cache discovery.
+  // Keep the existing rpc call sites working, but execute these operations through normal table writes.
+  // Repeated friend requests replace an existing pending request instead of hitting the pending unique constraint.
   const originalRpc = client.rpc.bind(client);
+  const originalFrom = client.from.bind(client);
+
+  const sendFriendRequest = async (recipientId: string) => {
+    const { data: sessionData } = await client.auth.getSession();
+    const currentUserId = sessionData.session?.user?.id;
+    if (!currentUserId) return { data: null, error: new Error('ログインが必要です') };
+    if (!recipientId || recipientId === currentUserId) return { data: null, error: new Error('このチャンネルにはフレンド申請を送れません') };
+
+    const { data: existingFriend, error: friendError } = await client
+      .from('friendships')
+      .select('id')
+      .or(`and(user_a.eq.${currentUserId},user_b.eq.${recipientId}),and(user_a.eq.${recipientId},user_b.eq.${currentUserId})`)
+      .limit(1);
+    if (friendError) return { data: null, error: friendError };
+    if (existingFriend?.length) return { data: null, error: new Error('すでにフレンドです') };
+
+    const { error: deletePendingError } = await client
+      .from('friend_requests')
+      .delete()
+      .eq('requester_id', currentUserId)
+      .eq('recipient_id', recipientId)
+      .eq('status', 'pending');
+    if (deletePendingError) return { data: null, error: deletePendingError };
+
+    const { data: request, error: insertError } = await client
+      .from('friend_requests')
+      .insert({ requester_id: currentUserId, recipient_id: recipientId, status: 'pending' })
+      .select('id')
+      .single();
+    if (insertError) return { data: null, error: insertError };
+    return { data: request.id, error: null };
+  };
+
   const customRpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
     if (fn === 'send_friend_request') {
       const recipientId = String(args?.['p_recipient_id'] ?? '');
-      return (async () => {
-        const { data: sessionData } = await client.auth.getSession();
-        const currentUserId = sessionData.session?.user?.id;
-        if (!currentUserId) return { data: null, error: new Error('ログインが必要です') };
-        if (!recipientId || recipientId === currentUserId) return { data: null, error: new Error('このチャンネルにはフレンド申請を送れません') };
-
-        const { data: existingFriend, error: friendError } = await client
-          .from('friendships')
-          .select('id')
-          .or(`and(user_a.eq.${currentUserId},user_b.eq.${recipientId}),and(user_a.eq.${recipientId},user_b.eq.${currentUserId})`)
-          .limit(1);
-        if (friendError) return { data: null, error: friendError };
-        if (existingFriend?.length) return { data: null, error: new Error('すでにフレンドです') };
-
-        const { error: deletePendingError } = await client
-          .from('friend_requests')
-          .delete()
-          .eq('requester_id', currentUserId)
-          .eq('recipient_id', recipientId)
-          .eq('status', 'pending');
-        if (deletePendingError) return { data: null, error: deletePendingError };
-
-        const { data: request, error: insertError } = await client
-          .from('friend_requests')
-          .insert({ requester_id: currentUserId, recipient_id: recipientId, status: 'pending' })
-          .select('id')
-          .single();
-        if (insertError) return { data: null, error: insertError };
-        return { data: request.id, error: null };
-      })() as any;
+      return sendFriendRequest(recipientId) as any;
     }
 
     if (fn === 'accept_friend_request') {
@@ -128,9 +133,63 @@ function createSupabaseClient() {
     return originalRpc(fn as any, args as any, options as any);
   }) as typeof client.rpc;
 
+  // Protect older UI code that still calls from('friend_requests').insert(...) directly.
+  // This makes the existing profile page safe without changing unrelated posting/comment flows.
+  const customFrom = ((relation: string) => {
+    const builder = originalFrom(relation as any);
+    if (relation !== 'friend_requests') return builder;
+
+    return new Proxy(builder as any, {
+      get(target, prop, receiver) {
+        if (prop === 'insert') {
+          return (values: any, options?: any) => {
+            const rows = Array.isArray(values) ? values : [values];
+            const pendingRows = rows.filter((row) => row?.status === 'pending' && row?.requester_id && row?.recipient_id);
+
+            if (pendingRows.length === 0) {
+              return target.insert(values, options);
+            }
+
+            return (async () => {
+              const { data: sessionData } = await client.auth.getSession();
+              const currentUserId = sessionData.session?.user?.id;
+              if (!currentUserId) return { data: null, error: new Error('ログインが必要です') };
+
+              for (const row of pendingRows) {
+                if (row.requester_id !== currentUserId) {
+                  return { data: null, error: new Error('このフレンド申請は送信できません') };
+                }
+
+                const { data: existingFriend, error: friendError } = await client
+                  .from('friendships')
+                  .select('id')
+                  .or(`and(user_a.eq.${currentUserId},user_b.eq.${row.recipient_id}),and(user_a.eq.${row.recipient_id},user_b.eq.${currentUserId})`)
+                  .limit(1);
+                if (friendError) return { data: null, error: friendError };
+                if (existingFriend?.length) return { data: null, error: new Error('すでにフレンドです') };
+
+                const { error: deleteError } = await client
+                  .from('friend_requests')
+                  .delete()
+                  .eq('requester_id', currentUserId)
+                  .eq('recipient_id', row.recipient_id)
+                  .eq('status', 'pending');
+                if (deleteError) return { data: null, error: deleteError };
+              }
+
+              return target.insert(values, options);
+            })();
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  }) as typeof client.from;
+
   return new Proxy(client, {
     get(target, prop, receiver) {
       if (prop === 'rpc') return customRpc;
+      if (prop === 'from') return customFrom;
       return Reflect.get(target, prop, receiver);
     },
   });
