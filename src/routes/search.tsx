@@ -34,7 +34,7 @@ function SearchPage() {
   const ownQuery = useQuery({ ...searchVideosQuery(q ?? ""), enabled: Boolean(q) && !isYouTube });
   const youtubeQuery = useQuery({
     queryKey: ["invidious", "youtube", q ?? "popular"],
-    queryFn: () => (q ? searchYouTubeVideos(q) : fetchPopularYouTubeVideos()),
+    queryFn: () => (q ? searchYouTubeVideos({ data: q }) : fetchPopularYouTubeVideos()),
     enabled: isYouTube,
     staleTime: 60_000,
   });
@@ -94,7 +94,7 @@ function SearchPage() {
         ) : youtubeQuery.isPending ? (
           <VideoGridSkeleton count={8} />
         ) : youtubeQuery.isError ? (
-          <EmptyState title="YouTube検索に失敗しました" description="Invidious APIに接続できませんでした。しばらくしてからもう一度お試しください。" />
+          <EmptyState title="YouTube検索に失敗しました" description="YouTube検索サーバーに接続できませんでした。しばらくしてからもう一度お試しください。" />
         ) : youtubeQuery.data && youtubeQuery.data.length > 0 ? (
           <>
             <p className="mb-4 text-sm text-muted-foreground">
