@@ -17,7 +17,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
 
-    // New Supabase API keys are opaque strings, not bearer JWTs.
     if (isNewSupabaseApiKey(supabaseKey) && headers.get('Authorization') === `Bearer ${supabaseKey}`) {
       headers.delete('Authorization');
     }
@@ -52,10 +51,8 @@ function createSupabaseClient() {
     }
   });
 
-  // The friend flow used to depend on PostgREST RPC schema-cache discovery.
-  // Keep the existing rpc call sites working, but execute these two operations
-  // through normal table writes instead. Database triggers create the matching
-  // activity notifications, so the flow no longer depends on RPC discovery.
+  // Keep friend operations working without depending on PostgREST RPC schema-cache discovery.
+  // A repeated request replaces the old pending request instead of hitting the pending unique constraint.
   const originalRpc = client.rpc.bind(client);
   const customRpc = ((fn: string, args?: Record<string, unknown>, options?: unknown) => {
     if (fn === 'send_friend_request') {
@@ -74,15 +71,13 @@ function createSupabaseClient() {
         if (friendError) return { data: null, error: friendError };
         if (existingFriend?.length) return { data: null, error: new Error('すでにフレンドです') };
 
-        const { data: pending, error: pendingError } = await client
+        const { error: deletePendingError } = await client
           .from('friend_requests')
-          .select('id')
+          .delete()
           .eq('requester_id', currentUserId)
           .eq('recipient_id', recipientId)
-          .eq('status', 'pending')
-          .limit(1);
-        if (pendingError) return { data: null, error: pendingError };
-        if (pending?.length) return { data: null, error: new Error('フレンド申請はすでに送信されています') };
+          .eq('status', 'pending');
+        if (deletePendingError) return { data: null, error: deletePendingError };
 
         const { data: request, error: insertError } = await client
           .from('friend_requests')
