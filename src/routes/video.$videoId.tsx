@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Heart, Sparkles } from "lucide-react";
@@ -35,6 +35,7 @@ function VideoDetailPage() {
   const queryClient = useQueryClient();
   const { data: video, isPending } = useQuery(videoDetailQuery(videoId));
   const { data: likes } = useQuery(videoLikesQuery(videoId));
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
   const counted = useRef(false);
   const watched = useRef(0);
@@ -43,6 +44,7 @@ function VideoDetailPage() {
   useEffect(() => {
     counted.current = false;
     watched.current = 0;
+    setAiExplanation(null);
   }, [videoId]);
 
   const countView = useCallback(() => {
@@ -84,11 +86,8 @@ function VideoDetailPage() {
 
   const aiReview = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error("AI感想を使うにはログインしてください。");
+      if (!user) throw new Error("Chat AETを使うにはログインしてください。");
 
-      // Use the Supabase SDK for the Edge Function call. This keeps the project URL,
-      // publishable key and auth/session handling in the same place as the rest of the app
-      // and avoids browser-side CORS/preflight failures from manually calling the endpoint.
       const { data, error } = await supabase.functions.invoke("ai-video-review", {
         body: { videoId },
       });
@@ -109,16 +108,20 @@ function VideoDetailPage() {
       }
 
       if (!data?.comment && !data?.reused) {
-        throw new Error(data?.error || "AIから感想を受け取れませんでした。");
+        throw new Error(data?.error || "Chat AETから説明を受け取れませんでした。");
       }
 
       return data;
     },
     onSuccess: (data) => {
+      const explanation = data?.comment?.body;
+      if (typeof explanation === "string" && explanation.trim()) {
+        setAiExplanation(explanation.trim());
+      }
       void queryClient.invalidateQueries({ queryKey: ["video", videoId, "comments"] });
-      toast.success(data?.reused ? "AI感想はすでにあります" : "Stickman AIが感想をコメントしました！");
+      toast.success(data?.reused ? "Chat AETの説明を表示しました" : "Chat AETが動画を解析しました！");
     },
-    onError: (error: Error) => toast.error(error.message || "AI感想の生成に失敗しました。"),
+    onError: (error: Error) => toast.error(error.message || "Chat AETの解析に失敗しました。"),
   });
 
   const embedUrl = video ? parseVideoUrl(video.video_url)?.embedUrl : null;
@@ -158,13 +161,28 @@ function VideoDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="secondary" size="sm" className="rounded-full" onClick={() => aiReview.mutate()} disabled={aiReview.isPending}>
                   {aiReview.isPending ? <Sparkles className="size-4 animate-pulse" /> : <Bot className="size-4" />}
-                  {aiReview.isPending ? "AIが動画を見ています…" : "AI感想"}
+                  {aiReview.isPending ? "Chat AETが動画を見ています…" : "🤖 Chat AETで説明"}
                 </Button>
                 <Button variant={liked ? "default" : "secondary"} size="sm" className="rounded-full" onClick={() => toggleLike.mutate()} disabled={toggleLike.isPending}>
                   <Heart className={liked ? "size-4 fill-current" : "size-4"} /> {likes?.count ?? 0}
                 </Button>
               </div>
             </div>
+
+            {aiExplanation ? (
+              <section className="mt-5 overflow-hidden rounded-2xl border border-primary/20 bg-primary/5 shadow-sm">
+                <div className="flex items-center gap-3 border-b border-primary/10 px-4 py-3">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <Bot className="size-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-extrabold">Chat AET</h2>
+                    <p className="text-xs text-muted-foreground">動画を読み込んで内容を説明しました</p>
+                  </div>
+                </div>
+                <div className="whitespace-pre-wrap px-4 py-4 text-sm leading-7">{aiExplanation}</div>
+              </section>
+            ) : null}
 
             {video.description ? <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed">{video.description}</p> : null}
             <Comments videoId={videoId} />
