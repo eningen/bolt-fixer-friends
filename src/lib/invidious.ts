@@ -8,14 +8,6 @@ const INVIDIOUS_INSTANCES = [
   "https://vid.blompinne.eu",
 ];
 
-const REQUEST_TIMEOUT_MS = 4500;
-const FALLBACK_STAGGER_MS = 250;
-const CACHE_TTL_MS = 30_000;
-const MAX_CACHE_ENTRIES = 20;
-
-const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
-const inFlightRequests = new Map<string, Promise<unknown>>();
-
 export type InvidiousVideo = {
   type?: string;
   title: string;
@@ -31,88 +23,34 @@ export type InvidiousVideo = {
   description?: string;
 };
 
-async function requestInvidious<T>(baseUrl: string, path: string, signal?: AbortSignal): Promise<T> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  const abort = () => controller.abort();
-  signal?.addEventListener("abort", abort, { once: true });
-
-  try {
-    const response = await fetch(`${baseUrl}${path}`, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      throw new Error(`Invidious API error: ${response.status}`);
-    }
-
-    return (await response.json()) as T;
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener("abort", abort);
-  }
-}
-
 async function fetchInvidious<T>(path: string): Promise<T> {
-  const cached = responseCache.get(path);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.data as T;
-  }
-  if (cached) responseCache.delete(path);
+  let lastError: unknown;
 
-  const existing = inFlightRequests.get(path);
-  if (existing) return existing as Promise<T>;
-
-  const request = (async () => {
-    const controllers = INVIDIOUS_INSTANCES.map(() => new AbortController());
-    let lastError: unknown;
+  for (const baseUrl of INVIDIOUS_INSTANCES) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const attempts = INVIDIOUS_INSTANCES.map((baseUrl, index) =>
-        new Promise<T>((resolve, reject) => {
-          const start = async () => {
-            try {
-              const data = await requestInvidious<T>(baseUrl, path, controllers[index].signal);
-              resolve(data);
-            } catch (error) {
-              lastError = error;
-              reject(error);
-            }
-          };
+      const response = await fetch(`${baseUrl}${path}`, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
 
-          if (index === 0) {
-            void start();
-          } else {
-            setTimeout(() => void start(), FALLBACK_STAGGER_MS * index);
-          }
-        }),
-      );
-
-      const data = await Promise.any(attempts);
-
-      responseCache.set(path, { expiresAt: Date.now() + CACHE_TTL_MS, data });
-      while (responseCache.size > MAX_CACHE_ENTRIES) {
-        const oldestKey = responseCache.keys().next().value;
-        if (!oldestKey) break;
-        responseCache.delete(oldestKey);
+      if (!response.ok) {
+        throw new Error(`Invidious API error: ${response.status}`);
       }
 
+      const data = (await response.json()) as T;
       return data;
     } catch (error) {
-      throw new Error("All Invidious instances failed", { cause: lastError ?? error });
+      lastError = error;
+      console.warn(`Invidious instance failed: ${baseUrl}`, error);
     } finally {
-      controllers.forEach((controller) => controller.abort());
+      clearTimeout(timeout);
     }
-  })();
-
-  inFlightRequests.set(path, request);
-  try {
-    return await request;
-  } finally {
-    inFlightRequests.delete(path);
   }
+
+  throw new Error("All Invidious instances failed", { cause: lastError });
 }
 
 export const fetchPopularYouTubeVideos = createServerFn({ method: "GET" }).handler(async () => {
