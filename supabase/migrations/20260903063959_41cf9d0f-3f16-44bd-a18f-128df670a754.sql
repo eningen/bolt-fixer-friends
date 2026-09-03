@@ -1,0 +1,2 @@
+INSERT INTO private.admin_users (user_id) VALUES ('aff7aa26-32e9-4595-bc1f-09fd0f3bd720') ON CONFLICT DO NOTHING;
+INSERT INTO public.admin_badges (user_id) VALUES ('aff7aa26-32e9-4595-bc1f-09fd0f3bd720') ON CONFLICT DO NOTHING;
