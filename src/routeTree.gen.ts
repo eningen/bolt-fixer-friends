@@ -22,6 +22,7 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as MessagesUsernameRouteImport } from './routes/messages.$username'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
+import { Route as YoutubeVideoIdRouteImport } from './routes/youtube.$videoId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const VideoVideoIdRoute = VideoVideoIdRouteImport.update({
   path: '/video/$videoId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const YoutubeVideoIdRoute = YoutubeVideoIdRouteImport.update({
+  id: '/youtube/$videoId',
+  path: '/youtube/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -103,6 +109,7 @@ export interface FileRoutesByFullPath {
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
+  '/youtube/$videoId': typeof YoutubeVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -118,6 +125,7 @@ export interface FileRoutesByTo {
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
+  '/youtube/$videoId': typeof YoutubeVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
+  '/youtube/$videoId': typeof YoutubeVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
+    | '/youtube/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
+    | '/youtube/$videoId'
   id:
     | '__root__'
     | '/'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
+    | '/youtube/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   MessagesUsernameRoute: typeof MessagesUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
   VideoVideoIdRoute: typeof VideoVideoIdRoute
+  YoutubeVideoIdRoute: typeof YoutubeVideoIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -234,7 +247,7 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof NotificationsRouteImport
     }
     '/ranking': {
       id: '/ranking'
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VideoVideoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/youtube/$videoId': {
+      id: '/youtube/$videoId'
+      path: '/youtube/$videoId'
+      fullPath: '/youtube/$videoId'
+      preLoaderRoute: typeof YoutubeVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesUsernameRoute: MessagesUsernameRoute,
   UUsernameRoute: UUsernameRoute,
   VideoVideoIdRoute: VideoVideoIdRoute,
+  YoutubeVideoIdRoute: YoutubeVideoIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
