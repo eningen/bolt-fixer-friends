@@ -362,6 +362,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           id: string
+          metadata: Json | null
           read: boolean
           type: Database["public"]["Enums"]["notification_type"]
           updated_at: string
@@ -372,6 +373,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           read?: boolean
           type: Database["public"]["Enums"]["notification_type"]
           updated_at?: string
@@ -382,6 +384,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           id?: string
+          metadata?: Json | null
           read?: boolean
           type?: Database["public"]["Enums"]["notification_type"]
           updated_at?: string
@@ -666,7 +669,12 @@ export type Database = {
       }
     }
     Enums: {
-      notification_type: "like" | "comment" | "subscribe" | "new_video"
+      notification_type:
+        | "like"
+        | "comment"
+        | "subscribe"
+        | "new_video"
+        | "friend_request"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -794,7 +802,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      notification_type: ["like", "comment", "subscribe", "new_video"],
+      notification_type: [
+        "like",
+        "comment",
+        "subscribe",
+        "new_video",
+        "friend_request",
+      ],
     },
   },
 } as const

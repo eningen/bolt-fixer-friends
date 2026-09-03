@@ -172,7 +172,7 @@ function ProfilePage() {
     mutationFn: async () => {
       if (!user || !channelId || isOwner) throw new Error("このチャンネルにはフレンド申請を送れません");
       const db = supabase as any;
-      const { error } = await db.rpc("send_friend_request", { p_recipient_id: channelId });
+      const { error } = await db.from("friend_requests").insert({ requester_id: user.id, recipient_id: channelId, status: "pending" });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -181,6 +181,7 @@ function ProfilePage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   const totalViews = (data?.videos ?? []).reduce((sum, video) => sum + (video.views ?? 0), 0);
 
@@ -194,7 +195,7 @@ function ProfilePage() {
             <div className="min-w-0 flex-1"><h1 className="flex items-center gap-2 truncate text-2xl font-extrabold">{data.profile.display_name}<AdminBadge userId={data.profile.id} withLabel className="px-2 py-1 text-xs" /></h1><p className="text-sm text-muted-foreground">@{data.profile.username}・登録者 {subscribers.length.toLocaleString()} 人</p></div>
             {isOwner ? <Button variant="secondary" className="rounded-full" onClick={() => setEditing((value) => !value)}>{editing ? "編集を閉じる" : "チャンネルを編集"}</Button> : user ? <div className="flex flex-wrap gap-2">
               <Button variant={isSubscribed ? "secondary" : "default"} className="rounded-full" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate()}>{isSubscribed ? "登録済み" : "チャンネル登録"}</Button>
-              {friendshipStatus.friends ? <Button asChild variant="outline" className="rounded-full"><Link to="/messages/$username" params={{ username: data.profile.username }}><MessageCircle className="mr-2 size-4" />DM</Link></Button> : friendshipStatus.pending ? <Button variant="secondary" className="rounded-full" disabled><Check className="mr-2 size-4" />申請済み</Button> : friendshipStatus.incoming ? <Button variant="secondary" className="rounded-full" disabled><UserPlus className="mr-2 size-4" />申請が届いています</Button> : <Button variant="outline" className="rounded-full" disabled={sendFriendRequest.isPending} onClick={() => sendFriendRequest.mutate()}><UserPlus className="mr-2 size-4" />フレンド申請</Button>}
+              {friendshipStatus.friends ? <Button asChild variant="outline" className="rounded-full"><Link to="/messages/$username" params={{ username: data.profile.username }}><MessageCircle className="mr-2 size-4" />DM</Link></Button> : <Button variant={friendshipStatus.pending ? "secondary" : "outline"} className="rounded-full" disabled={sendFriendRequest.isPending} onClick={() => sendFriendRequest.mutate()}>{friendshipStatus.pending ? <><Check className="mr-2 size-4" />もう一度フレンド申請</> : friendshipStatus.incoming ? <><UserPlus className="mr-2 size-4" />申請が届いています</> : <><UserPlus className="mr-2 size-4" />フレンド申請</>}</Button>}
               <Button variant="outline" className="rounded-full" onClick={() => setCollabOpen((value) => !value)}><Handshake className="mr-2 size-4" />コラボ</Button>
             </div> : <Button asChild variant="default" className="rounded-full"><Link to="/auth">ログインして登録</Link></Button>}
           </div>
