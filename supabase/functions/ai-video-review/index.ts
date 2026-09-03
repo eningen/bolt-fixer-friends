@@ -32,7 +32,9 @@ function isYouTubeUrl(value: string) {
   return /(?:youtube\.com\/watch\?v=|youtu\.be\/)/i.test(value);
 }
 
-function guessMimeType(url: string) {
+function guessMimeType(url: string, contentType?: string | null) {
+  const normalized = contentType?.split(";")[0].trim().toLowerCase();
+  if (normalized?.startsWith("video/")) return normalized;
   const clean = url.split("?")[0].toLowerCase();
   if (clean.endsWith(".webm")) return "video/webm";
   if (clean.endsWith(".mov")) return "video/quicktime";
@@ -57,6 +59,81 @@ function extractOutputText(payload: any): string {
     .trim();
 }
 
+async function uploadVideoToGemini(videoUrl: string) {
+  const source = await fetch(videoUrl);
+  if (!source.ok || !source.body) {
+    throw new Error(`動画ファイルを取得できませんでした (HTTP ${source.status})`);
+  }
+
+  const contentLengthHeader = source.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : NaN;
+  if (Number.isFinite(contentLength) && contentLength > 100 * 1024 * 1024) {
+    throw new Error("動画が大きすぎます。100MB以下の動画を使用してください。");
+  }
+
+  const bytes = new Uint8Array(await source.arrayBuffer());
+  if (bytes.byteLength > 100 * 1024 * 1024) {
+    throw new Error("動画が大きすぎます。100MB以下の動画を使用してください。");
+  }
+
+  const mimeType = guessMimeType(videoUrl, source.headers.get("content-type"));
+  const start = await fetch("https://generativelanguage.googleapis.com/upload/v1beta/files", {
+    method: "POST",
+    headers: {
+      "x-goog-api-key": GEMINI_API_KEY!,
+      "X-Goog-Upload-Protocol": "resumable",
+      "X-Goog-Upload-Command": "start",
+      "X-Goog-Upload-Header-Content-Length": String(bytes.byteLength),
+      "X-Goog-Upload-Header-Content-Type": mimeType,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ file: { display_name: "stickman-video-chat-aet" } }),
+  });
+
+  if (!start.ok) {
+    const detail = await start.text();
+    throw new Error(`Gemini Files APIの開始に失敗しました (HTTP ${start.status}): ${detail.slice(0, 500)}`);
+  }
+
+  const uploadUrl = start.headers.get("x-goog-upload-url");
+  if (!uploadUrl) throw new Error("Gemini Files APIのアップロードURLを取得できませんでした。");
+
+  const upload = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Length": String(bytes.byteLength),
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize",
+    },
+    body: bytes,
+  });
+
+  const filePayload = await upload.json().catch(() => ({}));
+  if (!upload.ok || !filePayload?.file?.name || !filePayload?.file?.uri) {
+    throw new Error(`Gemini Files APIへの動画アップロードに失敗しました (HTTP ${upload.status})`);
+  }
+
+  const fileName = filePayload.file.name as string;
+  let file = filePayload.file;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    const state = file?.state;
+    if (state === "ACTIVE") return { uri: file.uri as string, mimeType: file.mimeType || mimeType };
+    if (state === "FAILED") throw new Error("Geminiで動画の処理に失敗しました。");
+
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const statusResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/${fileName}`, {
+      headers: { "x-goog-api-key": GEMINI_API_KEY! },
+    });
+    const statusPayload = await statusResponse.json().catch(() => ({}));
+    if (!statusResponse.ok) {
+      throw new Error(`Gemini動画ファイルの状態確認に失敗しました (HTTP ${statusResponse.status})`);
+    }
+    file = statusPayload;
+  }
+
+  throw new Error("Geminiでの動画処理がタイムアウトしました。");
+}
+
 async function createInteraction(input: Array<Record<string, unknown>>) {
   const response = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
     method: "POST",
@@ -74,7 +151,8 @@ async function createInteraction(input: Array<Record<string, unknown>>) {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     console.error("Gemini interaction failed", response.status, payload);
-    throw new Error(`AIサービスへの接続に失敗しました (HTTP ${response.status})`);
+    const message = payload?.error?.message || payload?.message || "不明なエラー";
+    throw new Error(`AIサービスへの接続に失敗しました (HTTP ${response.status}): ${message}`);
   }
 
   const text = extractOutputText(payload);
@@ -85,7 +163,7 @@ async function createInteraction(input: Array<Record<string, unknown>>) {
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-  if (!GEMINI_API_KEY) return json({ error: "Chat AETのAI設定がまだ完了していません。" }, 503);
+  if (!GEMINI_API_KEY) return json({ error: "Chat AETのAI設定がまだ完了していません。GEMINI_API_KEYを設定してください。" }, 503);
 
   try {
     const token = getBearerToken(request);
@@ -118,14 +196,25 @@ Deno.serve(async (request) => {
     const mediaUrl = video.video_url;
     if (!mediaUrl) return json({ error: "動画URLがありません。" }, 422);
 
-    const mediaInput: Record<string, unknown> = {
-      type: "video",
-      uri: mediaUrl,
-      processing: { type: "agentic" },
-    };
-
-    if (!isYouTubeUrl(mediaUrl)) {
-      mediaInput.mime_type = guessMimeType(mediaUrl);
+    let mediaInput: Record<string, unknown>;
+    if (isYouTubeUrl(mediaUrl)) {
+      // Gemini supports public YouTube URLs directly.
+      mediaInput = {
+        type: "video",
+        uri: mediaUrl,
+        processing: "agentic",
+      };
+    } else {
+      // Supabase Storage and other ordinary URLs are downloaded and uploaded
+      // to Gemini Files API first, which avoids relying on Gemini fetching an
+      // arbitrary external media URL directly.
+      const uploaded = await uploadVideoToGemini(mediaUrl);
+      mediaInput = {
+        type: "video",
+        uri: uploaded.uri,
+        mime_type: uploaded.mimeType,
+        processing: "agentic",
+      };
     }
 
     const prompt = `あなたはStickman Videoに組み込まれたAI「Chat AET」です。
