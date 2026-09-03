@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as RankingRouteImport } from './routes/ranking'
 import { Route as SavedRouteImport } from './routes/saved'
@@ -35,6 +36,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
   '/saved': typeof SavedRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-login'
     | '/auth'
+    | '/friends'
     | '/notifications'
     | '/ranking'
     | '/saved'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-login'
     | '/auth'
+    | '/friends'
     | '/notifications'
     | '/ranking'
     | '/saved'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-login'
     | '/auth'
+    | '/friends'
     | '/notifications'
     | '/ranking'
     | '/saved'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AuthRoute: typeof AuthRoute
+  FriendsRoute: typeof FriendsRoute
   NotificationsRoute: typeof NotificationsRoute
   RankingRoute: typeof RankingRoute
   SavedRoute: typeof SavedRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/notifications': {
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminLoginRoute: AdminLoginRoute,
   AuthRoute: AuthRoute,
+  FriendsRoute: FriendsRoute,
   NotificationsRoute: NotificationsRoute,
   RankingRoute: RankingRoute,
   SavedRoute: SavedRoute,
