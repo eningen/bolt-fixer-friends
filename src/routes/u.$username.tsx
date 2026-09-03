@@ -172,7 +172,7 @@ function ProfilePage() {
     mutationFn: async () => {
       if (!user || !channelId || isOwner) throw new Error("このチャンネルにはフレンド申請を送れません");
       const db = supabase as any;
-      const { error } = await db.rpc("send_friend_request", { p_recipient_id: channelId });
+      const { error } = await db.from("friend_requests").insert({ requester_id: user.id, recipient_id: channelId, status: "pending" });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
@@ -181,6 +181,7 @@ function ProfilePage() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   const totalViews = (data?.videos ?? []).reduce((sum, video) => sum + (video.views ?? 0), 0);
 
