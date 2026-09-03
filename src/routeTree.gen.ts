@@ -247,7 +247,7 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
-      parentRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/ranking': {
       id: '/ranking'
