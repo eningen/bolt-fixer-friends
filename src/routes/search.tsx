@@ -31,16 +31,28 @@ function SearchPage() {
   const [term, setTerm] = useState(q ?? "");
   const isYouTube = source === "youtube";
 
+  // YouTubeタブでは入力を500msデバウンスして自動検索（通信量を削減）
+  useEffect(() => {
+    if (!isYouTube) return;
+    const next = term.trim();
+    if (next === (q ?? "")) return;
+    const timer = setTimeout(() => {
+      void navigate({ to: "/search", search: { q: next || undefined, source: "youtube" }, replace: true });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [term, isYouTube, q, navigate]);
+
   const ownQuery = useQuery({ ...searchVideosQuery(q ?? ""), enabled: Boolean(q) && !isYouTube });
   const youtubeQuery = useQuery({
     queryKey: ["invidious", "youtube", q ?? "popular"],
     queryFn: () => (q ? searchYouTubeVideos({ data: q }) : fetchPopularYouTubeVideos()),
     enabled: isYouTube,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    placeholderData: (prev) => prev,
   });
 
   const submitSearch = (nextSource: "stickman" | "youtube") => {
