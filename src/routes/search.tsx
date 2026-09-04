@@ -55,6 +55,16 @@ function SearchPage() {
     placeholderData: (prev) => prev,
   });
 
+  // YouTube人気動画を事前取得しておき、タブ切替を即時表示にする
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ["invidious", "youtube", "popular"],
+      queryFn: () => fetchPopularYouTubeVideos(),
+      staleTime: 5 * 60_000,
+    });
+  }, [queryClient]);
+
   const submitSearch = (nextSource: "stickman" | "youtube") => {
     const nextQuery = term.trim();
     void navigate({ to: "/search", search: { q: nextQuery || undefined, source: nextSource } });
