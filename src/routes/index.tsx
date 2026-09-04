@@ -31,6 +31,10 @@ export const Route = createFileRoute("/")({
 function Index() {
   const { data, isPending, error } = useQuery(latestVideosQuery);
   const { data: posts } = useQuery(latestPostsQuery);
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  const visibleVideos = data?.slice(0, visibleCount) ?? [];
+  const hasMore = data ? visibleCount < data.length : false;
 
   return (
     <div className="min-h-screen">
