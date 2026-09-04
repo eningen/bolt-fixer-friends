@@ -8,10 +8,11 @@ const INVIDIOUS_INSTANCES = [
   "https://vid.blompinne.eu",
 ];
 
-const REQUEST_TIMEOUT_MS = 4500;
-const FALLBACK_STAGGER_MS = 250;
-const CACHE_TTL_MS = 30_000;
-const MAX_CACHE_ENTRIES = 20;
+const REQUEST_TIMEOUT_MS = 4000;
+const FALLBACK_STAGGER_MS = 400;
+const CACHE_TTL_MS = 5 * 60_000;
+const MAX_CACHE_ENTRIES = 30;
+const MAX_RESULTS = 24;
 
 const responseCache = new Map<string, { expiresAt: number; data: unknown }>();
 const inFlightRequests = new Map<string, Promise<unknown>>();
@@ -116,7 +117,8 @@ async function fetchInvidious<T>(path: string): Promise<T> {
 }
 
 export const fetchPopularYouTubeVideos = createServerFn({ method: "GET" }).handler(async () => {
-  return fetchInvidious<InvidiousVideo[]>("/api/v1/popular?hl=ja");
+  const videos = await fetchInvidious<InvidiousVideo[]>("/api/v1/popular?hl=ja");
+  return videos.slice(0, MAX_RESULTS);
 });
 
 export const searchYouTubeVideos = createServerFn({ method: "GET" })
@@ -132,5 +134,6 @@ export const searchYouTubeVideos = createServerFn({ method: "GET" })
       hl: "ja",
     });
 
-    return fetchInvidious<InvidiousVideo[]>(`/api/v1/search?${params.toString()}`);
+    const results = await fetchInvidious<InvidiousVideo[]>(`/api/v1/search?${params.toString()}`);
+    return results.filter((v) => v.type === "video" || !v.type).slice(0, MAX_RESULTS);
   });

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { Header } from "@/components/Header";
@@ -31,17 +31,39 @@ function SearchPage() {
   const [term, setTerm] = useState(q ?? "");
   const isYouTube = source === "youtube";
 
+  // YouTubeタブでは入力を500msデバウンスして自動検索（通信量を削減）
+  useEffect(() => {
+    if (!isYouTube) return;
+    const next = term.trim();
+    if (next === (q ?? "")) return;
+    const timer = setTimeout(() => {
+      void navigate({ to: "/search", search: { q: next || undefined, source: "youtube" }, replace: true });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [term, isYouTube, q, navigate]);
+
   const ownQuery = useQuery({ ...searchVideosQuery(q ?? ""), enabled: Boolean(q) && !isYouTube });
   const youtubeQuery = useQuery({
     queryKey: ["invidious", "youtube", q ?? "popular"],
     queryFn: () => (q ? searchYouTubeVideos({ data: q }) : fetchPopularYouTubeVideos()),
     enabled: isYouTube,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     retry: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    placeholderData: (prev) => prev,
   });
+
+  // YouTube人気動画を事前取得しておき、タブ切替を即時表示にする
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    void queryClient.prefetchQuery({
+      queryKey: ["invidious", "youtube", "popular"],
+      queryFn: () => fetchPopularYouTubeVideos(),
+      staleTime: 5 * 60_000,
+    });
+  }, [queryClient]);
 
   const submitSearch = (nextSource: "stickman" | "youtube") => {
     const nextQuery = term.trim();
