@@ -134,5 +134,6 @@ export const searchYouTubeVideos = createServerFn({ method: "GET" })
       hl: "ja",
     });
 
-    return fetchInvidious<InvidiousVideo[]>(`/api/v1/search?${params.toString()}`);
+    const results = await fetchInvidious<InvidiousVideo[]>(`/api/v1/search?${params.toString()}`);
+    return results.filter((v) => v.type === "video" || !v.type).slice(0, MAX_RESULTS);
   });
