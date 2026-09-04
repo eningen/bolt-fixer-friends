@@ -117,7 +117,8 @@ async function fetchInvidious<T>(path: string): Promise<T> {
 }
 
 export const fetchPopularYouTubeVideos = createServerFn({ method: "GET" }).handler(async () => {
-  return fetchInvidious<InvidiousVideo[]>("/api/v1/popular?hl=ja");
+  const videos = await fetchInvidious<InvidiousVideo[]>("/api/v1/popular?hl=ja");
+  return videos.slice(0, MAX_RESULTS);
 });
 
 export const searchYouTubeVideos = createServerFn({ method: "GET" })
