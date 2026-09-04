@@ -74,7 +74,7 @@ async function fetchInvidious<T>(path: string): Promise<T> {
         new Promise<T>((resolve, reject) => {
           const start = async () => {
             try {
-              const data = await requestInvidious<T>(baseUrl, path, controllers[index].signal);
+              const data = await requestInvidious<T>(baseUrl, path, controllers[index]!.signal);
               resolve(data);
             } catch (error) {
               lastError = error;

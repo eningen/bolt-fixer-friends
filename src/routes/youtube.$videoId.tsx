@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 const youtubeSearchSchema = { title: "" };
 
 export const Route = createFileRoute("/youtube/$videoId")({
-  validateSearch: (search) => ({ title: typeof search.title === "string" ? search.title : youtubeSearchSchema.title }),
+  validateSearch: (search) => ({ title: typeof (search as Record<string, unknown>)["title"] === "string" ? String((search as Record<string, unknown>)["title"]) : youtubeSearchSchema.title }),
   head: ({ params }) => ({
     meta: [{ title: "YouTube動画｜Stickman video" }, { name: "description", content: `YouTube動画 ${params.videoId} をStickman video内で再生します。` }],
   }),
