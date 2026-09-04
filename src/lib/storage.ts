@@ -5,8 +5,36 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const VIDEO_BUCKET = "videos";
 export const AVATAR_BUCKET = "avatars";
+export const POST_IMAGE_BUCKET = "post-images";
 export const MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200MB
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
+export const MAX_POST_IMAGE_BYTES = 10 * 1024 * 1024; // 10MB
+
+const IMAGE_EXTENSION_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
+
+/** 文章投稿に添付する画像をアップロードして保存先パスを返す */
+export async function uploadPostImage(file: File, userId: string): Promise<string> {
+  if (!file.type.startsWith("image/")) throw new Error("画像ファイルを選択してください");
+  if (file.size > MAX_POST_IMAGE_BYTES) throw new Error("画像は10MB以内にしてください");
+  const extension =
+    IMAGE_EXTENSION_BY_TYPE[file.type.toLowerCase()] ??
+    file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!extension) throw new Error("対応していない画像形式です");
+  const path = `${userId}/post-${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from(POST_IMAGE_BUCKET)
+    .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false, cacheControl: "3600" });
+  if (error) throw new Error(`画像のアップロードに失敗しました: ${error.message}`);
+  return path;
+}
 
 export function isStoragePath(value: string | null | undefined): boolean {
   return Boolean(value) && !/^https?:\/\//i.test(value as string);

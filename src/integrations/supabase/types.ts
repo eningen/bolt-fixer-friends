@@ -469,6 +469,7 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          image_path: string | null
           updated_at: string
           user_id: string
         }
@@ -476,6 +477,7 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          image_path?: string | null
           updated_at?: string
           user_id: string
         }
@@ -483,6 +485,7 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          image_path?: string | null
           updated_at?: string
           user_id?: string
         }

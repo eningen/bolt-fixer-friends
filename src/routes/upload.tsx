@@ -8,7 +8,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { parseVideoUrl } from "@/lib/video";
-import { MAX_VIDEO_BYTES, uploadVideoFile } from "@/lib/storage";
+import { MAX_POST_IMAGE_BYTES, MAX_VIDEO_BYTES, uploadPostImage, uploadVideoFile } from "@/lib/storage";
 import { MAX_THUMBNAIL_BYTES, uploadCustomThumbnail } from "@/lib/thumbnail";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,7 @@ function UploadPage() {
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [postImage, setPostImage] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -70,13 +71,35 @@ function UploadPage() {
     () => (thumbnailFile ? URL.createObjectURL(thumbnailFile) : null),
     [thumbnailFile],
   );
+  const postImagePreview = useMemo(
+    () => (postImage ? URL.createObjectURL(postImage) : null),
+    [postImage],
+  );
 
   useEffect(() => {
     return () => {
       if (filePreview) URL.revokeObjectURL(filePreview);
       if (thumbnailPreview) URL.revokeObjectURL(thumbnailPreview);
+      if (postImagePreview) URL.revokeObjectURL(postImagePreview);
     };
-  }, [filePreview, thumbnailPreview]);
+  }, [filePreview, thumbnailPreview, postImagePreview]);
+
+  const onPickPostImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = event.target.files?.[0] ?? null;
+    if (!picked) {
+      setPostImage(null);
+      return;
+    }
+    if (!picked.type.startsWith("image/")) {
+      toast.error("画像ファイルを選択してください");
+      return;
+    }
+    if (picked.size > MAX_POST_IMAGE_BYTES) {
+      toast.error("画像は10MB以内にしてください");
+      return;
+    }
+    setPostImage(picked);
+  };
 
   const onPickFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const picked = event.target.files?.[0] ?? null;
@@ -128,13 +151,24 @@ function UploadPage() {
         return;
       }
       setBusy(true);
-      const { error } = await supabase.from("posts").insert({ user_id: user.id, body: text });
+      let imagePath: string | null = null;
+      try {
+        if (postImage) imagePath = await uploadPostImage(postImage, user.id);
+      } catch (uploadError) {
+        setBusy(false);
+        toast.error(uploadError instanceof Error ? uploadError.message : "画像のアップロードに失敗しました");
+        return;
+      }
+      const { error } = await supabase
+        .from("posts")
+        .insert({ user_id: user.id, body: text, image_path: imagePath });
       setBusy(false);
       if (error) {
         toast.error("投稿に失敗しました。もう一度お試しください。");
         return;
       }
       setBody("");
+      setPostImage(null);
       await queryClient.invalidateQueries({ queryKey: ["posts"] });
       toast.success("文章を投稿しました");
       void navigate({ to: "/" });
@@ -298,6 +332,28 @@ function UploadPage() {
                 rows={7}
               />
               <p className="text-xs text-muted-foreground">{body.trim().length} / 2000</p>
+              <div className="space-y-2">
+                <Label htmlFor="post-image">画像を添付（任意・10MBまで）</Label>
+                <Input
+                  id="post-image"
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  onChange={onPickPostImage}
+                  className="cursor-pointer file:mr-3 file:text-sm"
+                />
+                {postImagePreview ? (
+                  <div className="space-y-2">
+                    <img
+                      src={postImagePreview}
+                      alt="添付画像のプレビュー"
+                      className="max-h-64 w-full rounded-lg border border-border object-contain"
+                    />
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setPostImage(null)}>
+                      画像を外す
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             </TabsContent>
           </Tabs>
 

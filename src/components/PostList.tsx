@@ -10,6 +10,20 @@ import type { PostRow } from "@/lib/queries";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { POST_IMAGE_BUCKET, useMediaUrl } from "@/lib/storage";
+
+function PostImage({ path }: { path: string }) {
+  const url = useMediaUrl(path, POST_IMAGE_BUCKET);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt="投稿の添付画像"
+      loading="lazy"
+      className="mt-2 max-h-96 w-full rounded-lg border border-border object-contain"
+    />
+  );
+}
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString("ja-JP", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -124,6 +138,7 @@ export function PostList({ posts }: { posts: PostRow[] }) {
         <span className="text-xs text-muted-foreground">{formatDate(post.created_at)}</span>
         {!isOwnPost && post.profile && user ? <Button type="button" variant={isSubscribed ? "secondary" : "default"} size="sm" className="h-7 rounded-full px-3 text-xs font-semibold" disabled={toggleSubscribe.isPending} onClick={() => toggleSubscribe.mutate(post.user_id)}>{isSubscribed ? "登録済み" : "チャンネル登録"}</Button> : null}
       </div><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed">{post.body}</p>
+      {post.image_path ? <PostImage path={post.image_path} /> : null}
       <div className="mt-3 border-t border-border pt-3"><div className="flex items-center gap-1 text-sm font-medium"><MessageCircle className="size-4" />コメント {comments.length}</div>
       {user ? <form className="mt-2 flex gap-2" onSubmit={(event) => { event.preventDefault(); addComment.mutate({ postId: post.id, body: draft }); }}><Textarea value={draft} onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))} placeholder="この投稿にコメント..." rows={2} maxLength={1000} /><Button type="submit" size="icon" className="mt-auto shrink-0" disabled={addComment.isPending || !draft.trim()} aria-label="コメントを送信"><Send className="size-4" /></Button></form> : <p className="mt-2 text-xs text-muted-foreground"><Link to="/auth" className="text-primary underline">ログイン</Link>するとコメントできます。</p>}
       {comments.length > 0 ? <div className="mt-3 space-y-3">{comments.map((comment) => <div key={comment.id} className="flex gap-2 pl-2"><div className="min-w-0 flex-1"><p className="text-xs text-muted-foreground">{formatDate(comment.created_at)}</p><p className="whitespace-pre-wrap break-words text-sm">{comment.body}</p>{user?.id === comment.user_id ? <Button type="button" variant="ghost" size="sm" className="mt-1 h-7 px-2" disabled={removeComment.isPending} onClick={() => removeComment.mutate(comment.id)} aria-label="コメントを削除"><Trash2 className="size-3" /></Button> : null}</div></div>)}</div> : null}</div></div>
