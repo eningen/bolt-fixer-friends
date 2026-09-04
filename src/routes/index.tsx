@@ -73,11 +73,23 @@ function Index() {
             title="動画を読み込めませんでした"
             description="通信状況を確認して、ページを再読み込みしてください。"
           />
-        ) : data && data.length > 0 ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {data.map((video) => (
-              <VideoCard key={video.id} video={video} />
-            ))}
+        ) : visibleVideos.length > 0 ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {visibleVideos.map((video) => (
+                <VideoCard key={video.id} video={video} />
+              ))}
+            </div>
+            {hasMore && (
+              <div className="flex justify-center">
+                <Button
+                  variant="secondary"
+                  onClick={() => setVisibleCount((c) => c + 5)}
+                >
+                  更に表示
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <EmptyState
