@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { mailboxMessagesQuery, notificationsQuery, type MailboxMessage, type NotificationRow } from "@/lib/queries";
 import { formatRelativeDate } from "@/lib/video";
+import { getPushStatus, enablePushNotifications, type PushStatus } from "@/lib/push";
+import { sendTestPush } from "@/lib/push.functions";
 import { Header } from "@/components/Header";
 import { UserAvatar } from "@/components/UserAvatar";
 import { EmptyState } from "@/components/VideoCard";
@@ -54,6 +56,17 @@ function MailboxCard({ item, onRead }: { item: MailboxMessage; onRead: (id: stri
   );
 }
 
+function pushStatusLabel(status: PushStatus) {
+  switch (status) {
+    case "granted": return "✓ 本物の通知は有効です";
+    case "install-to-home-screen": return "iPhoneはホーム画面に追加してください";
+    case "denied": return "端末・ブラウザの設定から通知を許可してください";
+    case "not-configured": return "通知サーバーの設定が未完了です";
+    case "unsupported": return "このブラウザはプッシュ通知に対応していません";
+    default: return "まだ通知を有効にしていません";
+  }
+}
+
 function NotificationsPage() {
   const { user, loading } = useAuth();
   const queryClient = useQueryClient();
@@ -61,10 +74,8 @@ function NotificationsPage() {
   const { data: mailbox = [], isPending: mailboxPending } = useQuery(mailboxMessagesQuery(user?.id));
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | "unsupported">(() => {
-    if (typeof Notification === "undefined") return "unsupported";
-    return Notification.permission;
-  });
+  const [pushStatus, setPushStatus] = useState<PushStatus>(() => getPushStatus());
+  const [testPushPending, setTestPushPending] = useState(false);
 
   const unread = notifications.filter((item) => !item.read).length;
   const mailboxUnread = mailbox.filter((item) => !item.read).length;
@@ -72,10 +83,40 @@ function NotificationsPage() {
   const isAdmin = user?.id === "aff7aa26-32e9-4595-bcf1-09fd0f3bd720";
 
   const enableBrowserNotifications = async () => {
-    if (typeof Notification === "undefined") { setNotificationPermission("unsupported"); toast.info("このブラウザは通知に対応していません"); return; }
-    if (Notification.permission === "denied") { setNotificationPermission("denied"); toast.info("ブラウザの設定から、このサイトの通知を許可してください"); return; }
-    if (Notification.permission === "granted") { setNotificationPermission("granted"); toast.success("通知はすでに有効です"); return; }
-    try { const permission = await Notification.requestPermission(); setNotificationPermission(permission); if (permission === "granted") toast.success("通知を許可しました"); else if (permission === "denied") toast.info("ブラウザの設定から、このサイトの通知を許可してください"); } catch { toast.info("ブラウザの設定から通知を確認してください"); }
+    if (pushStatus === "install-to-home-screen") {
+      toast.info("iPhoneではSafariの共有 → ホーム画面に追加 → ホーム画面のStickmanアイコンから開いてください");
+      return;
+    }
+    try {
+      const nextStatus = await enablePushNotifications();
+      setPushStatus(nextStatus);
+      if (nextStatus === "granted") toast.success("本物の通知を有効にしました！");
+      else if (nextStatus === "denied") toast.info("端末・ブラウザの設定から、このサイトの通知を許可してください");
+      else if (nextStatus === "not-configured") toast.error("通知サーバーの設定が未完了です");
+      else if (nextStatus === "unsupported") toast.info("このブラウザはプッシュ通知に対応していません");
+    } catch (error) {
+      console.error(error);
+      setPushStatus(getPushStatus());
+      toast.error("通知の設定に失敗しました。ホーム画面から開き直してもう一度試してください");
+    }
+  };
+
+  const sendTestNotification = async () => {
+    if (pushStatus !== "granted") {
+      toast.info("先に「本物の通知を有効にする」を押してください");
+      return;
+    }
+    setTestPushPending(true);
+    try {
+      const result = await sendTestPush({ data: undefined });
+      if (result.sent > 0) toast.success("テスト通知を送信しました。ロック画面などを確認してください！");
+      else toast.info("この端末の通知登録が見つかりませんでした。通知をいったん無効にしてから再登録してください");
+    } catch (error) {
+      console.error(error);
+      toast.error("テスト通知の送信に失敗しました");
+    } finally {
+      setTestPushPending(false);
+    }
   };
 
   const markAllRead = useMutation({
@@ -122,7 +163,7 @@ function NotificationsPage() {
       <main className="mx-auto max-w-3xl px-4 py-8 pb-24">
         <div className="flex items-center justify-between gap-4"><div><h1 className="text-2xl font-extrabold">写真ボックス・通知</h1>{mailboxUnread > 0 ? <p className="mt-1 text-sm text-primary">未読のお知らせが {mailboxUnread} 件あります{importantUnread > 0 ? `・最重要メール ${importantUnread} 件` : ""}</p> : null}</div>{unread > 0 ? <Button variant="secondary" size="sm" className="rounded-full" disabled={markAllRead.isPending} onClick={() => markAllRead.mutate()}>通知をすべて既読</Button> : null}</div>
 
-        <section className="mt-6 rounded-xl border border-border bg-surface/40 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold">🔔 ブラウザ通知</h2><p className="mt-1 text-sm text-muted-foreground">新しいアップデートが届いたときにブラウザでも知らせます。</p></div>{notificationPermission === "granted" ? <span className="shrink-0 rounded-full bg-primary/10 px-3 py-2 text-sm font-semibold text-primary">✓ 通知は有効です</span> : notificationPermission === "denied" ? <span className="shrink-0 text-sm text-muted-foreground">ブラウザの設定から通知を許可してください</span> : notificationPermission === "unsupported" ? <span className="shrink-0 text-sm text-muted-foreground">このブラウザは通知に対応していません</span> : <Button type="button" className="shrink-0" onClick={enableBrowserNotifications}>🔔 通知を有効にする</Button>}</div></section>
+        <section className="mt-6 rounded-xl border border-border bg-surface/40 p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><h2 className="font-bold">🔔 本物のプッシュ通知</h2><p className="mt-1 text-sm text-muted-foreground">DMなどが届いたとき、サイトを閉じていてもロック画面に通知を表示します。</p>{pushStatus === "install-to-home-screen" ? <p className="mt-2 text-xs font-medium text-primary">iPhone：Safariの「共有」→「ホーム画面に追加」→ホーム画面のStickmanアイコンから起動してください。</p> : null}<p className="mt-2 text-xs text-muted-foreground">{pushStatusLabel(pushStatus)}</p></div><div className="flex shrink-0 flex-wrap gap-2"><Button type="button" variant={pushStatus === "granted" ? "secondary" : "default"} onClick={enableBrowserNotifications}>{pushStatus === "granted" ? "✓ 通知は有効" : "🔔 本物の通知を有効にする"}</Button>{pushStatus === "granted" ? <Button type="button" variant="outline" disabled={testPushPending} onClick={sendTestNotification}>{testPushPending ? "送信中…" : "テスト送信"}</Button> : null}</div></div></section>
 
         {isAdmin ? <section className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4"><h2 className="font-bold">📢 アップデートを全ユーザーへ配信</h2><p className="mt-1 text-xs text-muted-foreground">登録済みの全ユーザーのメールボックスに保存され、サイトを開いているユーザーには通知音も鳴ります。</p><div className="mt-4 space-y-3"><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="お知らせのタイトル" maxLength={120} /><Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="アップデート内容を書いてください" rows={5} maxLength={5000} /><Button disabled={publish.isPending || !title.trim() || !body.trim()} onClick={() => publish.mutate()}>{publish.isPending ? "配信中…" : "全ユーザーへ配信"}</Button></div></section> : null}
 
