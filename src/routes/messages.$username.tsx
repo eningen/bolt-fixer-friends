@@ -17,7 +17,7 @@ export const Route = createFileRoute("/messages/$username")({
 });
 
 type Profile = { id: string; username: string; display_name: string; avatar_url: string | null };
-type Message = { id: string; sender_id: string; recipient_id: string; body: string; created_at: string };
+type Message = { id: string; sender_id: string; recipient_id: string; body: string; read: boolean; created_at: string };
 
 function MessagesPage() {
   const { username } = Route.useParams();
@@ -55,7 +55,7 @@ function MessagesPage() {
       const db = supabase as any;
       const { data, error } = await db
         .from("direct_messages")
-        .select("id,sender_id,recipient_id,body,created_at")
+        .select("id,sender_id,recipient_id,body,read,created_at")
         .or(`and(sender_id.eq.${user!.id},recipient_id.eq.${target!.id}),and(sender_id.eq.${target!.id},recipient_id.eq.${user!.id})`)
         .order("created_at", { ascending: true })
         .limit(200);
@@ -67,6 +67,20 @@ function MessagesPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!user?.id || !target?.id) return;
+    const hasUnread = messages.some((message) => message.recipient_id === user.id && !message.read);
+    if (!hasUnread) return;
+    const db = supabase as any;
+    void db
+      .from("direct_messages")
+      .update({ read: true })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", target.id)
+      .eq("read", false)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["dm-threads", user.id] }));
+  }, [messages, queryClient, target?.id, user?.id]);
 
   const sendMessage = useMutation({
     mutationFn: async () => {
