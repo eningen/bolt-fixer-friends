@@ -660,6 +660,7 @@ export type Database = {
     }
     Functions: {
       admin_number_for: { Args: { _user_id: string }; Returns: string }
+      are_friends: { Args: { p_other_id: string }; Returns: boolean }
       increment_video_views: { Args: { _video_id: string }; Returns: undefined }
       is_current_user_admin: { Args: never; Returns: boolean }
       publish_announcement: {
