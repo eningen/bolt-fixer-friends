@@ -10,6 +10,7 @@ import { Header } from "@/components/Header";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { notifyDirectMessage } from "@/lib/push.functions";
 
 export const Route = createFileRoute("/messages/$username")({
   head: () => ({ meta: [{ title: "DM｜Stickman video" }] }),
@@ -91,6 +92,14 @@ function MessagesPage() {
       const db = supabase as any;
       const { error } = await db.from("direct_messages").insert({ sender_id: user.id, recipient_id: target.id, body: clean });
       if (error) throw error;
+
+      // Push通知の失敗でDM本体の送信を失敗扱いにしない。
+      void notifyDirectMessage({
+        data: {
+          recipientId: target.id,
+          preview: clean.slice(0, 200),
+        },
+      }).catch((error) => console.warn("DM push notification failed", error));
     },
     onSuccess: () => {
       setBody("");
