@@ -68,6 +68,20 @@ function MessagesPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  useEffect(() => {
+    if (!user?.id || !target?.id) return;
+    const hasUnread = messages.some((message) => message.recipient_id === user.id && !(message as Message & { read?: boolean }).read);
+    if (!hasUnread) return;
+    const db = supabase as any;
+    void db
+      .from("direct_messages")
+      .update({ read: true })
+      .eq("recipient_id", user.id)
+      .eq("sender_id", target.id)
+      .eq("read", false)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["dm-threads", user.id] }));
+  }, [messages, queryClient, target?.id, user?.id]);
+
   const sendMessage = useMutation({
     mutationFn: async () => {
       if (!user || !target) throw new Error("ログインが必要です");
