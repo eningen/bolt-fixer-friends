@@ -42,7 +42,7 @@ export const removePushSubscription = createServerFn({ method: "POST" })
 
 type SendResult = { sent: number };
 
-async function pushToUser(
+export async function pushToUser(
   userId: string,
   message: { title: string; body: string; url: string; tag?: string },
 ): Promise<SendResult> {
