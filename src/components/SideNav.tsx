@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Home, Search, Trophy, Upload, UserRound } from "lucide-react";
+import { Home, Search, Trophy, Upload, UserRound, Radio } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { myProfileQuery } from "@/lib/queries";
@@ -19,6 +19,7 @@ export function SideNav() {
     { label: t("search"), icon: Search, to: "/search", match: (p) => p.startsWith("/search") },
     { label: t("ranking"), icon: Trophy, to: "/ranking", match: (p) => p.startsWith("/ranking") },
     { label: t("upload"), icon: Upload, to: "/upload", match: (p) => p.startsWith("/upload") },
+    { label: "ライブ", icon: Radio, to: "/live", match: (p) => p.startsWith("/live") },
     profile ? { label: t("myPage"), icon: UserRound, to: "/u/$username", params: { username: profile.username }, match: (p) => p === `/u/${profile.username}` } : { label: t("login"), icon: UserRound, to: "/auth", match: (p) => p.startsWith("/auth") },
   ];
   return <>
