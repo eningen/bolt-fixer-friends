@@ -309,6 +309,223 @@ export type Database = {
           },
         ]
       }
+      live_chat_messages: {
+        Row: {
+          body: string
+          created_at: string
+          hidden: boolean
+          id: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          hidden?: boolean
+          id?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_chat_messages_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_likes: {
+        Row: {
+          created_at: string
+          id: string
+          stream_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          stream_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          stream_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_likes_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_likes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_signals: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          recipient_key: string | null
+          sender_key: string
+          stream_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          payload: Json
+          recipient_key?: string | null
+          sender_key: string
+          stream_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          recipient_key?: string | null
+          sender_key?: string
+          stream_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_signals_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_streams: {
+        Row: {
+          archive_path: string | null
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          id: string
+          peak_viewer_count: number
+          started_at: string | null
+          status: string
+          thumbnail_url: string | null
+          title: string
+          transport: string
+          updated_at: string
+          user_id: string
+          viewer_count: number
+        }
+        Insert: {
+          archive_path?: string | null
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          peak_viewer_count?: number
+          started_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title: string
+          transport?: string
+          updated_at?: string
+          user_id: string
+          viewer_count?: number
+        }
+        Update: {
+          archive_path?: string | null
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          id?: string
+          peak_viewer_count?: number
+          started_at?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          title?: string
+          transport?: string
+          updated_at?: string
+          user_id?: string
+          viewer_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_streams_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      live_viewers: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          session_key: string
+          stream_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          session_key: string
+          stream_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          session_key?: string
+          stream_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "live_viewers_stream_id_fkey"
+            columns: ["stream_id"]
+            isOneToOne: false
+            referencedRelation: "live_streams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "live_viewers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mailbox_messages: {
         Row: {
           body: string
@@ -712,6 +929,7 @@ export type Database = {
         | "subscribe"
         | "new_video"
         | "friend_request"
+        | "live_start"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -845,6 +1063,7 @@ export const Constants = {
         "subscribe",
         "new_video",
         "friend_request",
+        "live_start",
       ],
     },
   },
