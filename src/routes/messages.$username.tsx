@@ -91,7 +91,7 @@ function MessagesPage() {
       if (clean.length > 2000) throw new Error("メッセージは2000文字以内です");
 
       const db = supabase as any;
-      const request = db.rpc("send_direct_message", {
+      const request = db.rpc("send_direct_message_v3", {
         p_body: clean,
         p_recipient_id: target.id,
       });
