@@ -92,8 +92,8 @@ function MessagesPage() {
 
       const db = supabase as any;
       const request = db.rpc("send_direct_message", {
-        p_recipient_id: target.id,
         p_body: clean,
+        p_recipient_id: target.id,
       });
       const timeout = new Promise<never>((_, reject) => {
         window.setTimeout(() => reject(new Error("送信がタイムアウトしました。通信状態を確認してもう一度お試しください。")), 10000);
@@ -101,7 +101,6 @@ function MessagesPage() {
       const { error } = await Promise.race([request, timeout]);
       if (error) throw new Error(error.message || "メッセージを送信できませんでした");
 
-      // Push通知の失敗でDM本体の送信を失敗扱いにしない。
       void notifyDirectMessage({
         data: {
           recipientId: target.id,
