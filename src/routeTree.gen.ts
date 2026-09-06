@@ -67,18 +67,108 @@ export interface FileRoutesByFullPath {
   '/live/$streamId': typeof LiveStreamIdRoute
   '/messages/': typeof MessagesIndexRoute
 }
-export interface FileRoutesByTo extends FileRoutesByFullPath {
+export interface FileRoutesByTo {
+  '/': typeof IndexRoute
+  '/admin-login': typeof AdminLoginRoute
+  '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
+  '/notifications': typeof NotificationsRoute
+  '/ranking': typeof RankingRoute
+  '/saved': typeof SavedRoute
+  '/search': typeof SearchRoute
+  '/terms': typeof TermsRoute
+  '/upload': typeof UploadRoute
+  '/messages/$username': typeof MessagesUsernameRoute
+  '/u/$username': typeof UUsernameRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
+  '/youtube/$videoId': typeof YoutubeVideoIdRoute
+  '/live': typeof LiveRoute
+  '/live/start': typeof LiveStartRoute
+  '/live/$streamId': typeof LiveStreamIdRoute
   '/messages': typeof MessagesIndexRoute
 }
-export interface FileRoutesById extends FileRoutesByFullPath {
+export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
+  '/admin-login': typeof AdminLoginRoute
+  '/auth': typeof AuthRoute
+  '/friends': typeof FriendsRoute
+  '/notifications': typeof NotificationsRoute
+  '/ranking': typeof RankingRoute
+  '/saved': typeof SavedRoute
+  '/search': typeof SearchRoute
+  '/terms': typeof TermsRoute
+  '/upload': typeof UploadRoute
+  '/messages/$username': typeof MessagesUsernameRoute
+  '/u/$username': typeof UUsernameRoute
+  '/video/$videoId': typeof VideoVideoIdRoute
+  '/youtube/$videoId': typeof YoutubeVideoIdRoute
+  '/live': typeof LiveRoute
+  '/live/start': typeof LiveStartRoute
+  '/live/$streamId': typeof LiveStreamIdRoute
+  '/messages/': typeof MessagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: keyof FileRoutesByFullPath
+  fullPaths:
+    | '/'
+    | '/admin-login'
+    | '/auth'
+    | '/friends'
+    | '/notifications'
+    | '/ranking'
+    | '/saved'
+    | '/search'
+    | '/terms'
+    | '/upload'
+    | '/messages/$username'
+    | '/u/$username'
+    | '/video/$videoId'
+    | '/youtube/$videoId'
+    | '/live'
+    | '/live/start'
+    | '/live/$streamId'
+    | '/messages/'
   fileRoutesByTo: FileRoutesByTo
-  to: keyof FileRoutesByTo
-  id: keyof FileRoutesById
+  to:
+    | '/'
+    | '/admin-login'
+    | '/auth'
+    | '/friends'
+    | '/notifications'
+    | '/ranking'
+    | '/saved'
+    | '/search'
+    | '/terms'
+    | '/upload'
+    | '/messages/$username'
+    | '/u/$username'
+    | '/video/$videoId'
+    | '/youtube/$videoId'
+    | '/live'
+    | '/live/start'
+    | '/live/$streamId'
+    | '/messages'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin-login'
+    | '/auth'
+    | '/friends'
+    | '/notifications'
+    | '/ranking'
+    | '/saved'
+    | '/search'
+    | '/terms'
+    | '/upload'
+    | '/messages/$username'
+    | '/u/$username'
+    | '/video/$videoId'
+    | '/youtube/$videoId'
+    | '/live'
+    | '/live/start'
+    | '/live/$streamId'
+    | '/messages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -126,24 +216,24 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute,
-  AdminLoginRoute,
-  AuthRoute,
-  FriendsRoute,
-  NotificationsRoute,
-  RankingRoute,
-  SavedRoute,
-  SearchRoute,
-  TermsRoute,
-  UploadRoute,
-  MessagesUsernameRoute,
-  UUsernameRoute,
-  VideoVideoIdRoute,
-  YoutubeVideoIdRoute,
-  LiveRoute,
-  LiveStartRoute,
-  LiveStreamIdRoute,
-  MessagesIndexRoute,
+  IndexRoute: IndexRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  AuthRoute: AuthRoute,
+  FriendsRoute: FriendsRoute,
+  NotificationsRoute: NotificationsRoute,
+  RankingRoute: RankingRoute,
+  SavedRoute: SavedRoute,
+  SearchRoute: SearchRoute,
+  TermsRoute: TermsRoute,
+  UploadRoute: UploadRoute,
+  MessagesUsernameRoute: MessagesUsernameRoute,
+  UUsernameRoute: UUsernameRoute,
+  VideoVideoIdRoute: VideoVideoIdRoute,
+  YoutubeVideoIdRoute: YoutubeVideoIdRoute,
+  LiveRoute: LiveRoute,
+  LiveStartRoute: LiveStartRoute,
+  LiveStreamIdRoute: LiveStreamIdRoute,
+  MessagesIndexRoute: MessagesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
