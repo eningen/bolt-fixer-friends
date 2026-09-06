@@ -59,9 +59,16 @@ function LiveDetailPage() {
       if (!cancelled && !error) setChat((data ?? []) as unknown as ChatRow[]);
     };
     void load();
-    const channel = supabase.channel(`live-chat-${streamId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "live_chat_messages", filter: `stream_id=eq.${streamId}` }, (payload) => setChat((current) => [...current, payload.new as ChatRow].slice(-100))).subscribe();
-    return () => { cancelled = true; void supabase.removeChannel(channel); };
-  }, [streamId]);
+    const channel = supabase.channel(`live-chat-${streamId}`).on("postgres_changes", { event: "INSERT", schema: "public", table: "live_chat_messages", filter: `stream_id=eq.${streamId}` }, async (payload) => {
+      const row = payload.new as ChatRow;
+      const { data: profile } = await supabase.from("profiles").select("username,display_name,avatar_url").eq("id", row.user_id).maybeSingle();
+      if (!cancelled) setChat((current) => [...current, { ...row, profile: profile ?? null }].slice(-100));
+    }).subscribe();
+    const likesChannel = supabase.channel(`live-likes-${streamId}`).on("postgres_changes", { event: "*", schema: "public", table: "live_likes", filter: `stream_id=eq.${streamId}` }, () => {
+      void queryClient.invalidateQueries({ queryKey: ["live", "stream", streamId, "likes"] });
+    }).subscribe();
+    return () => { cancelled = true; void supabase.removeChannel(channel); void supabase.removeChannel(likesChannel); };
+  }, [streamId, queryClient]);
 
   const liked = Boolean(user && likes.likedBy.includes(user.id));
   const toggleLike = async () => {
@@ -81,7 +88,7 @@ function LiveDetailPage() {
 
   const finish = async () => {
     setEnding(true);
-    try { await endLiveStream({ data: { streamId } }); mediaStream?.getTracks().forEach((track) => track.stop()); toast.success("ライブ配信を終了しました"); void queryClient.invalidateQueries({ queryKey: ["live", "stream", streamId] }); } catch (error) { toast.error(error instanceof Error ? error.message : "配信を終了できませんでした"); } finally { setEnding(false); }
+    try { await endLiveStream({ data: { streamId } }); mediaStream?.getTracks().forEach((track) => track.stop()); toast.success("ライブ配信を終了しました"); void queryClient.invalidateQueries({ queryKey: ["live", "stream", streamId] }); void queryClient.invalidateQueries({ queryKey: ["live", "list"] }); } catch (error) { toast.error(error instanceof Error ? error.message : "配信を終了できませんでした"); } finally { setEnding(false); }
   };
 
   if (isPending) return <div className="min-h-screen"><Header /><main className="mx-auto max-w-5xl px-4 py-8">読み込み中…</main></div>;
