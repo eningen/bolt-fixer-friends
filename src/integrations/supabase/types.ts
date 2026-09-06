@@ -712,6 +712,7 @@ export type Database = {
         | "subscribe"
         | "new_video"
         | "friend_request"
+        | "live_start"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -845,6 +846,7 @@ export const Constants = {
         "subscribe",
         "new_video",
         "friend_request",
+        "live_start",
       ],
     },
   },
