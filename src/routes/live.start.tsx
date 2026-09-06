@@ -25,12 +25,13 @@ function StartLivePage() {
   const start = async () => {
     if (!user) { toast.info("ライブ配信にはログインが必要です"); await navigate({ to: "/auth" }); return; }
     if (!title.trim()) { toast.error("配信タイトルを入力してください"); return; }
+    if (!navigator.mediaDevices?.getUserMedia) { toast.error("このブラウザではカメラ・マイクを利用できません"); return; }
     setPending(true);
     try {
       const permission = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       permission.getTracks().forEach((track) => track.stop());
       const result = await startLiveStream({ data: { title: title.trim(), description: description.trim() } });
-      await navigate({ to: "/live/$streamId", params: { streamId: result.streamId }, search: "?host=1" as never });
+      await navigate({ to: "/live/$streamId", params: { streamId: result.streamId } });
     } catch (error) {
       console.error(error);
       toast.error(error instanceof Error ? error.message : "カメラ・マイクを利用できませんでした");
