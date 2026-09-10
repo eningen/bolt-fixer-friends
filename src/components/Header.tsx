@@ -74,17 +74,17 @@ export function Header() {
     { label: "管理者ログイン", to: "/admin-login", icon: Shield },
   ];
 
-  return <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-    <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-      <div className="flex min-w-0 items-center gap-1">
-        <Link to="/" className="flex shrink-0 items-center gap-1 text-xl font-extrabold"><span className="text-primary">Stickman</span><span className="hidden sm:inline">video</span></Link>
-        <nav className="flex shrink-0 items-center gap-1">
-          <Button asChild variant="ghost" size="sm"><Link to="/search" aria-label={t("search")} className="md:hidden"><Search className="size-4" /></Link></Button>
-          <Button asChild variant="ghost" size="sm"><Link to="/ranking"><Trophy className="size-4" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
-          {user ? <><Button asChild size="sm"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>{profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")}><UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /></Link> : null}<Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></> : <Button asChild size="sm"><Link to="/auth">{t("login")}</Link></Button>}
+  return <header className="sticky top-0 z-50 overflow-x-hidden border-b border-border bg-background/95 backdrop-blur">
+    <div className="mx-auto flex h-14 max-w-6xl items-center gap-1 px-2 sm:gap-3 sm:px-4">
+      <div className="flex min-w-0 max-w-full items-center gap-0">
+        <Link to="/" className="flex shrink-0 items-center gap-1 text-lg font-extrabold sm:text-xl"><span className="text-primary">Stickman</span><span className="hidden sm:inline">video</span></Link>
+        <nav className="flex shrink-0 items-center gap-0 sm:gap-1">
+          <Button asChild variant="ghost" size="sm"><Link to="/search" aria-label={t("search")}><Search className="size-4 sm:size-5" /></Link></Button>
+          <Button asChild variant="ghost" size="sm"><Link to="/ranking"><Trophy className="size-4 sm:size-5" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
+          {user ? <><Button asChild size="sm"><Link to="/upload"><Upload className="size-4 sm:size-5" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4 sm:size-5" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button><span className="hidden sm:inline-flex"><Link to="/u/$username" params={{ username: profile?.username ?? "" }} aria-label={t("myPage")}>{profile ? <UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /> : null}</Link></span><span className="hidden sm:inline-flex"><Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></span></> : <Button asChild size="sm"><Link to="/auth">{t("login")}</Link></Button>}
 
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <DialogTrigger asChild><Button variant="ghost" size="sm" aria-label="クイックメニュー" className="h-8 w-8 p-0"><MoreHorizontal className="size-5" /></Button></DialogTrigger>
+            <DialogTrigger asChild><Button variant="ghost" size="sm" aria-label="クイックメニュー" className="h-8 w-8 p-0 sm:h-9 sm:w-9"><MoreHorizontal className="size-5" /></Button></DialogTrigger>
             <DialogContent className="w-[calc(100%-24px)] max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-5">
               <DialogHeader className="mb-2"><DialogTitle className="text-base sm:text-lg">クイックメニュー</DialogTitle></DialogHeader>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
