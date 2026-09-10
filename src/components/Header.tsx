@@ -76,28 +76,30 @@ export function Header() {
 
   return <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
     <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-      <Link to="/" className="flex shrink-0 items-center gap-1 text-xl font-extrabold"><span className="text-primary">Stickman</span><span className="hidden sm:inline">video</span></Link>
+      <div className="flex min-w-0 items-center gap-1">
+        <Link to="/" className="flex shrink-0 items-center gap-1 text-xl font-extrabold"><span className="text-primary">Stickman</span><span className="hidden sm:inline">video</span></Link>
+        <nav className="flex shrink-0 items-center gap-1">
+          <Button asChild variant="ghost" size="sm"><Link to="/search" aria-label={t("search")} className="md:hidden"><Search className="size-4" /></Link></Button>
+          <Button asChild variant="ghost" size="sm"><Link to="/ranking"><Trophy className="size-4" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
+          {user ? <><Button asChild size="sm"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>{profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")}><UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /></Link> : null}<Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></> : <Button asChild size="sm"><Link to="/auth">{t("login")}</Link></Button>}
+
+          <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <DialogTrigger asChild><Button variant="ghost" size="sm" aria-label="クイックメニュー" className="h-8 w-8 p-0"><MoreHorizontal className="size-5" /></Button></DialogTrigger>
+            <DialogContent className="w-[calc(100%-24px)] max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-5">
+              <DialogHeader className="mb-2"><DialogTitle className="text-base sm:text-lg">クイックメニュー</DialogTitle></DialogHeader>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {quickItems.map(({ label, to, icon: Icon }) => <Button key={label} asChild variant="outline" className="h-12 justify-start gap-2 px-3 text-sm sm:h-14 sm:justify-center sm:px-2"><Link to={to as any} onClick={() => setSettingsOpen(false)}><Icon className="size-4 shrink-0" />{label}{label === "通知" && unreadCount > 0 ? <span className="ml-auto rounded-full bg-destructive px-1.5 py-1 text-[10px] font-bold text-destructive-foreground sm:ml-0">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>)}
+              </div>
+              <div className="mt-3 border-t border-border pt-3">
+                <div className="mb-2 text-xs font-medium text-muted-foreground">🌐 {t("languageSettings")}</div>
+                <select id="quick-language-select" value={language} onChange={(event) => setLanguage(event.target.value as "ja" | "en")} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="ja">{t("japanese")}</option><option value="en">{t("english")}</option></select>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </nav>
+      </div>
       <form onSubmit={onSearch} className="hidden flex-1 items-center gap-2 md:flex"><Input value={term} onChange={(event) => setTerm(event.target.value)} placeholder={t("searchVideos")} className="max-w-md rounded-full bg-surface" aria-label={t("searchVideos")} /><Button type="submit" variant="secondary" className="rounded-full">{t("search")}</Button></form>
       <div className="flex-1 md:hidden" />
-      <nav className="mr-2 flex shrink-0 items-center gap-1">
-        <Button asChild variant="ghost" size="sm"><Link to="/search" aria-label={t("search")} className="md:hidden"><Search className="size-4" /></Link></Button>
-        <Button asChild variant="ghost" size="sm"><Link to="/ranking"><Trophy className="size-4" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
-        {user ? <><Button asChild size="sm"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>{profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")}><UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /></Link> : null}<Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></> : <Button asChild size="sm"><Link to="/auth">{t("login")}</Link></Button>}
-
-        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-          <DialogTrigger asChild><Button variant="ghost" size="sm" aria-label="クイックメニュー" className="h-8 w-8 p-0"><MoreHorizontal className="size-5" /></Button></DialogTrigger>
-          <DialogContent className="w-[calc(100%-24px)] max-w-lg max-h-[85vh] overflow-y-auto p-4 sm:p-5">
-            <DialogHeader className="mb-2"><DialogTitle className="text-base sm:text-lg">クイックメニュー</DialogTitle></DialogHeader>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {quickItems.map(({ label, to, icon: Icon }) => <Button key={label} asChild variant="outline" className="h-12 justify-start gap-2 px-3 text-sm sm:h-14 sm:justify-center sm:px-2"><Link to={to as any} onClick={() => setSettingsOpen(false)}><Icon className="size-4 shrink-0" />{label}{label === "通知" && unreadCount > 0 ? <span className="ml-auto rounded-full bg-destructive px-1.5 py-1 text-[10px] font-bold text-destructive-foreground sm:ml-0">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>)}
-            </div>
-            <div className="mt-3 border-t border-border pt-3">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">🌐 {t("languageSettings")}</div>
-              <select id="quick-language-select" value={language} onChange={(event) => setLanguage(event.target.value as "ja" | "en")} className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="ja">{t("japanese")}</option><option value="en">{t("english")}</option></select>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </nav>
     </div>
   </header>;
 }
