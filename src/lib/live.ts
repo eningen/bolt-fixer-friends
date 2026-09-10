@@ -39,7 +39,6 @@ export const liveStreamsQuery = queryOptions({
   },
 });
 
-/** 配信履歴（将来のアーカイブ表示にも使う） */
 export function liveHistoryQuery(userId: string | undefined) {
   return queryOptions({
     queryKey: ["live", "history", userId],
@@ -110,11 +109,11 @@ export function useSessionKey() {
     try {
       const saved = window.sessionStorage.getItem("stickman-live-key");
       if (saved) return saved;
-      const next = Math.random().toString(36).slice(2, 12);
+      const next = crypto.randomUUID();
       window.sessionStorage.setItem("stickman-live-key", next);
       return next;
     } catch {
-      return Math.random().toString(36).slice(2, 12);
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
     }
   }, []);
 }
@@ -133,14 +132,21 @@ type SignalRow = {
   payload: unknown;
 };
 
-async function sendSignal(streamId: string, senderKey: string, recipientKey: string | null, kind: string, payload: unknown) {
-  await supabase.from("live_signals").insert({
+async function sendSignal(
+  streamId: string,
+  senderKey: string,
+  recipientKey: string | null,
+  kind: string,
+  payload: unknown,
+) {
+  const { error } = await supabase.from("live_signals").insert({
     stream_id: streamId,
     sender_key: senderKey,
     recipient_key: recipientKey,
     kind,
     payload: payload as never,
   } as never);
+  if (error) throw error;
 }
 
 function subscribeSignals(streamId: string, onSignal: (row: SignalRow) => void) {
@@ -169,18 +175,24 @@ export function useLiveHostBroadcast(streamId: string | null, stream: MediaStrea
 
     const ensurePeer = (viewerKey: string) => {
       const existing = peers.get(viewerKey);
-      if (existing) {
-        existing.close();
-        peers.delete(viewerKey);
+      if (existing && ["new", "connecting", "connected"].includes(existing.connectionState)) {
+        return existing;
       }
+      existing?.close();
+      peers.delete(viewerKey);
+
       const pc = new RTCPeerConnection(RTC_CONFIG);
       for (const track of stream.getTracks()) pc.addTrack(track, stream);
       pc.onicecandidate = (event) => {
-        if (event.candidate) void sendSignal(streamId, HOST_KEY, viewerKey, "candidate", event.candidate.toJSON());
+        if (event.candidate) {
+          void sendSignal(streamId, HOST_KEY, viewerKey, "candidate", event.candidate.toJSON()).catch((error) =>
+            console.error("live host candidate send error", error),
+          );
+        }
       };
       pc.onconnectionstatechange = () => {
-        if (["failed", "closed", "disconnected"].includes(pc.connectionState)) {
-          peers.delete(viewerKey);
+        if (["failed", "closed"].includes(pc.connectionState)) {
+          if (peers.get(viewerKey) === pc) peers.delete(viewerKey);
           if (!disposed) setPeerCount(peers.size);
         }
       };
@@ -194,9 +206,13 @@ export function useLiveHostBroadcast(streamId: string | null, stream: MediaStrea
         try {
           if (row.kind === "join" && row.sender_key !== HOST_KEY) {
             const pc = ensurePeer(row.sender_key);
+            if (pc.connectionState !== "new") return;
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
-            await sendSignal(streamId, HOST_KEY, row.sender_key, "offer", { sdp: offer.sdp, type: offer.type });
+            await sendSignal(streamId, HOST_KEY, row.sender_key, "offer", {
+              sdp: offer.sdp,
+              type: offer.type,
+            });
             return;
           }
           if (row.recipient_key !== HOST_KEY) return;
@@ -235,7 +251,16 @@ export function useLiveViewerStream(streamId: string, enabled: boolean) {
     if (!enabled || typeof window === "undefined") return;
     let pc: RTCPeerConnection | null = null;
     let cancelled = false;
+    const pendingCandidates: RTCIceCandidateInit[] = [];
     setState("connecting");
+
+    const flushCandidates = async () => {
+      if (!pc?.remoteDescription) return;
+      while (pendingCandidates.length) {
+        const candidate = pendingCandidates.shift();
+        if (candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      }
+    };
 
     const unsubscribe = subscribeSignals(streamId, (row) => {
       void (async () => {
@@ -243,21 +268,32 @@ export function useLiveViewerStream(streamId: string, enabled: boolean) {
         try {
           if (row.kind === "offer") {
             await pc.setRemoteDescription(new RTCSessionDescription(row.payload as RTCSessionDescriptionInit));
+            await flushCandidates();
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            await sendSignal(streamId, sessionKey, HOST_KEY, "answer", { sdp: answer.sdp, type: answer.type });
+            await sendSignal(streamId, sessionKey, HOST_KEY, "answer", {
+              sdp: answer.sdp,
+              type: answer.type,
+            });
           } else if (row.kind === "candidate") {
-            await pc.addIceCandidate(new RTCIceCandidate(row.payload as RTCIceCandidateInit));
+            const candidate = row.payload as RTCIceCandidateInit;
+            if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            else pendingCandidates.push(candidate);
           }
         } catch (error) {
           console.error("live viewer signal error", error);
+          if (!cancelled) setState("failed");
         }
       })();
     });
 
     pc = new RTCPeerConnection(RTC_CONFIG);
     pc.onicecandidate = (event) => {
-      if (event.candidate) void sendSignal(streamId, sessionKey, HOST_KEY, "candidate", event.candidate.toJSON());
+      if (event.candidate) {
+        void sendSignal(streamId, sessionKey, HOST_KEY, "candidate", event.candidate.toJSON()).catch((error) =>
+          console.error("live viewer candidate send error", error),
+        );
+      }
     };
     pc.ontrack = (event) => {
       const [incoming] = event.streams;
@@ -272,13 +308,17 @@ export function useLiveViewerStream(streamId: string, enabled: boolean) {
       if (pc.connectionState === "failed") setState("failed");
     };
 
-    // 少し待ってから参加要求（購読が張られてから合図を送る）
     const timer = window.setTimeout(() => {
-      void sendSignal(streamId, sessionKey, HOST_KEY, "join", {});
+      void sendSignal(streamId, sessionKey, HOST_KEY, "join", {}).catch((error) =>
+        console.error("live viewer join send error", error),
+      );
     }, 700);
-    // 接続できないときは定期的に再要求
     const retry = window.setInterval(() => {
-      if (pc && pc.connectionState !== "connected") void sendSignal(streamId, sessionKey, HOST_KEY, "join", {});
+      if (pc && !["connected", "completed"].includes(pc.connectionState)) {
+        void sendSignal(streamId, sessionKey, HOST_KEY, "join", {}).catch((error) =>
+          console.error("live viewer retry send error", error),
+        );
+      }
     }, 12000);
 
     return () => {
@@ -305,10 +345,11 @@ export function useViewerHeartbeat(streamId: string, userId: string | undefined,
 
     const beat = async () => {
       if (stopped) return;
-      await supabase.from("live_viewers").upsert(
+      const { error } = await supabase.from("live_viewers").upsert(
         { stream_id: streamId, user_id: userId, session_key: sessionKey, last_seen_at: new Date().toISOString() } as never,
         { onConflict: "stream_id,session_key" },
       );
+      if (error) console.error("live viewer heartbeat error", error);
     };
     void beat();
     const timer = window.setInterval(() => void beat(), 20000);
