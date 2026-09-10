@@ -75,13 +75,13 @@ export function Header() {
   ];
 
   return <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur">
-    <div className="mx-auto flex h-14 max-w-6xl items-center gap-3 px-4">
-      <div className="flex min-w-0 items-center gap-1">
+    <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-2 sm:gap-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-0">
         <Link to="/" className="flex shrink-0 items-center gap-1 text-xl font-extrabold"><span className="text-primary">Stickman</span><span className="hidden sm:inline">video</span></Link>
-        <nav className="flex shrink-0 items-center gap-1">
-          <Button asChild variant="ghost" size="sm"><Link to="/search" aria-label={t("search")} className="md:hidden"><Search className="size-4" /></Link></Button>
-          <Button asChild variant="ghost" size="sm"><Link to="/ranking"><Trophy className="size-4" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
-          {user ? <><Button asChild size="sm"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>{profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")} className="shrink-0"><UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /></Link> : null}<Button variant="ghost" size="sm" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></> : <Button asChild size="sm"><Link to="/auth">{t("login")}</Link></Button>}
+        <nav className="flex shrink-0 items-center gap-0">
+          <Button asChild variant="ghost" size="sm" className="px-1"><Link to="/search" aria-label={t("search")} className="md:hidden"><Search className="size-4" /></Link></Button>
+          <Button asChild variant="ghost" size="sm" className="px-1"><Link to="/ranking"><Trophy className="size-4" /><span className="hidden sm:inline">{t("ranking")}</span></Link></Button>
+          {user ? <><Button asChild size="sm" className="px-1"><Link to="/upload"><Upload className="size-4" /><span className="hidden sm:inline">{t("upload")}</span></Link></Button><Button asChild variant="ghost" size="sm" className="relative px-1" aria-label={t("notifications")}><Link to="/notifications"><Bell className="size-4" />{unreadCount > 0 ? <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">{unreadCount > 99 ? "99+" : unreadCount}</span> : null}</Link></Button>{profile ? <Link to="/u/$username" params={{ username: profile.username }} aria-label={t("myPage")} className="shrink-0 px-1"><UserAvatar className="size-8" src={profile.avatar_url} name={profile.display_name} /></Link> : null}<Button variant="ghost" size="sm" className="px-1" onClick={onSignOut} aria-label={t("logout")}><LogOut className="size-4" /></Button></> : <Button asChild size="sm" className="px-1"><Link to="/auth">{t("login")}</Link></Button>}
 
           <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
             <DialogTrigger asChild><Button variant="ghost" size="sm" aria-label="クイックメニュー" className="h-8 w-8 shrink-0 p-0"><MoreHorizontal className="size-5" /></Button></DialogTrigger>
