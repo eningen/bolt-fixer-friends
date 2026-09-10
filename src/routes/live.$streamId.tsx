@@ -44,9 +44,26 @@ function LiveDetailPage() {
     void navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((next) => {
       if (cancelled) next.getTracks().forEach((track) => track.stop());
       else setMediaStream(next);
-    }).catch((error) => { console.error(error); toast.error("カメラ・マイクを開始できませんでした"); });
-    return () => { cancelled = true; setMediaStream((current) => { current?.getTracks().forEach((track) => track.stop()); return null; }); };
-  }, [isHost]);
+    }).catch(async (error) => {
+      console.error("live host media setup error", error);
+      toast.error("カメラ・マイクを開始できませんでした");
+      // 配信レコード作成後にカメラ・マイク取得が失敗した場合、
+      // DBだけがLIVEとして残らないように所有者自身の配信を終了する。
+      if (!cancelled) {
+        try {
+          await endLiveStream({ data: { streamId } });
+          void queryClient.invalidateQueries({ queryKey: ["live", "stream", streamId] });
+          void queryClient.invalidateQueries({ queryKey: ["live", "list"] });
+        } catch (cleanupError) {
+          console.error("live host cleanup error", cleanupError);
+        }
+      }
+    });
+    return () => {
+      cancelled = true;
+      setMediaStream((current) => { current?.getTracks().forEach((track) => track.stop()); return null; });
+    };
+  }, [isHost, streamId, queryClient]);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = isHost ? mediaStream : viewer.remoteStream;
