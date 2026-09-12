@@ -2,10 +2,10 @@ import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type VideoRow = {
-  id: string; user_id: string; title: string; description: string | null; video_url: string; platform: string; youtube_id: string | null; thumbnail_url: string | null; storage_path: string | null; views: number; created_at: string;
+  id: string; user_id: string; title: string; description: string | null; video_url: string; platform: string; youtube_id: string | null; thumbnail_url: string | null; storage_path: string | null; views: number; created_at: string; genres: string[];
   profile: { username: string; display_name: string; avatar_url: string | null } | null;
 };
-const VIDEO_SELECT = "id,user_id,title,description,video_url,platform,youtube_id,thumbnail_url,storage_path,views,created_at,profile:profiles!videos_user_id_profiles_fkey(username,display_name,avatar_url)";
+const VIDEO_SELECT = "id,user_id,title,description,video_url,platform,youtube_id,thumbnail_url,storage_path,views,created_at,genres,profile:profiles!videos_user_id_profiles_fkey(username,display_name,avatar_url)";
 export const latestVideosQuery = queryOptions({ queryKey: ["videos", "latest"], queryFn: async (): Promise<VideoRow[]> => { const { data, error } = await supabase.from("videos").select(VIDEO_SELECT).order("created_at", { ascending: false }).limit(24); if (error) throw error; return (data ?? []) as unknown as VideoRow[]; } });
 export const rankingByViewsQuery = queryOptions({ queryKey: ["videos", "ranking", "views"], queryFn: async (): Promise<VideoRow[]> => { const { data, error } = await supabase.from("videos").select(VIDEO_SELECT).order("views", { ascending: false }).limit(50); if (error) throw error; return (data ?? []) as unknown as VideoRow[]; } });
 export const likeRankingQuery = queryOptions({ queryKey: ["videos", "ranking", "likes"], queryFn: async (): Promise<{ video: VideoRow; likes: number }[]> => { const [{ data: videos, error: vErr }, { data: likes, error: lErr }] = await Promise.all([supabase.from("videos").select(VIDEO_SELECT).limit(200), supabase.from("likes").select("video_id")]); if (vErr) throw vErr; if (lErr) throw lErr; const counts = new Map<string, number>(); for (const like of likes ?? []) counts.set(like.video_id, (counts.get(like.video_id) ?? 0) + 1); return ((videos ?? []) as unknown as VideoRow[]).map((video) => ({ video, likes: counts.get(video.id) ?? 0 })).sort((a, b) => b.likes - a.likes || b.video.views - a.video.views).slice(0, 50); } });
