@@ -40,10 +40,16 @@ function Index() {
           <div className="relative max-w-xl">
             <h1 className="text-balance-jp text-3xl font-extrabold leading-tight sm:text-4xl">棒人間動画を、みんなで共有しよう</h1>
             <p className="mt-4 leading-relaxed text-muted-foreground">オリジナルの棒人間アニメーションを投稿して、再生数ランキングの頂点を目指そう。</p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button asChild size="lg"><Link to="/auth">はじめる</Link></Button>
-              <Button asChild size="lg" variant="secondary"><Link to="/ranking">ランキングを見る</Link></Button>
-              <Button asChild size="lg" variant="secondary"><Link to="/recommendations">✨ あなたへのおすすめ</Link></Button>
+            <div className="mt-7">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Button asChild size="lg"><Link to="/auth">はじめる</Link></Button>
+                <Button asChild size="lg" variant="secondary"><Link to="/ranking">ランキングを見る</Link></Button>
+              </div>
+              <div className="mt-3">
+                <Button asChild size="lg" variant="secondary" className="w-full sm:w-auto">
+                  <Link to="/recommendations">✨ あなたへのおすすめ</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
