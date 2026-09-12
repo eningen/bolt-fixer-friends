@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, LogOut, Search, Settings, Trophy, Upload, FileText, Shield, Users, MessageCircle, MoreHorizontal, Home, User, X } from "lucide-react";
+import { Bell, LogOut, Search, Settings, Trophy, Upload, FileText, Shield, Users, MessageCircle, MoreHorizontal, Home, User } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,6 +69,7 @@ export function Header() {
       { label: "フレンド", to: "/friends", icon: Users },
       { label: "DM", to: "/messages", icon: MessageCircle },
       ...(profile ? [{ label: "マイページ", to: `/u/${profile.username}`, icon: User }] : []),
+      { label: "設定", to: "/settings", icon: Settings },
     ] : []),
     { label: "利用規約", to: "/terms", icon: FileText },
     { label: "管理者ログイン", to: "/admin-login", icon: Shield },
