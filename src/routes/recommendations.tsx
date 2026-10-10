@@ -42,7 +42,7 @@ function RecommendationsPage() {
       if (profileResult.error) throw profileResult.error;
       if (videoResult.error) throw videoResult.error;
 
-      const preferred = Array.isArray(profileResult.data?.preferred_genres) ? profileResult.data.preferred_genres : [];
+      const preferred: string[] = Array.isArray(profileResult.data?.preferred_genres) ? (profileResult.data.preferred_genres as string[]) : [];
       const videos = (videoResult.data ?? []) as VideoRow[];
       if (preferred.length === 0) return { videos: videos.slice(0, 24), genres: [] };
 

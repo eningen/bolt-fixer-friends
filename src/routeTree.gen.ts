@@ -13,58 +13,144 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminLoginRouteImport } from './routes/admin-login'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as LiveRouteImport } from './routes/live'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as RankingRouteImport } from './routes/ranking'
+import { Route as RecommendationsRouteImport } from './routes/recommendations'
 import { Route as SavedRouteImport } from './routes/saved'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as LiveStreamIdRouteImport } from './routes/live.$streamId'
+import { Route as LiveStartRouteImport } from './routes/live.start'
 import { Route as MessagesIndexRouteImport } from './routes/messages.index'
 import { Route as MessagesUsernameRouteImport } from './routes/messages.$username'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as VideoVideoIdRouteImport } from './routes/video.$videoId'
 import { Route as YoutubeVideoIdRouteImport } from './routes/youtube.$videoId'
-import { Route as LiveRouteImport } from './routes/live'
-import { Route as LiveStartRouteImport } from './routes/live.start'
-import { Route as LiveStreamIdRouteImport } from './routes/live.$streamId'
 
-const IndexRoute = IndexRouteImport.update({ id: '/', path: '/', getParentRoute: () => rootRouteImport } as any)
-const AdminLoginRoute = AdminLoginRouteImport.update({ id: '/admin-login', path: '/admin-login', getParentRoute: () => rootRouteImport } as any)
-const AuthRoute = AuthRouteImport.update({ id: '/auth', path: '/auth', getParentRoute: () => rootRouteImport } as any)
-const FriendsRoute = FriendsRouteImport.update({ id: '/friends', path: '/friends', getParentRoute: () => rootRouteImport } as any)
-const NotificationsRoute = NotificationsRouteImport.update({ id: '/notifications', path: '/notifications', getParentRoute: () => rootRouteImport } as any)
-const RankingRoute = RankingRouteImport.update({ id: '/ranking', path: '/ranking', getParentRoute: () => rootRouteImport } as any)
-const SavedRoute = SavedRouteImport.update({ id: '/saved', path: '/saved', getParentRoute: () => rootRouteImport } as any)
-const SearchRoute = SearchRouteImport.update({ id: '/search', path: '/search', getParentRoute: () => rootRouteImport } as any)
-const TermsRoute = TermsRouteImport.update({ id: '/terms', path: '/terms', getParentRoute: () => rootRouteImport } as any)
-const UploadRoute = UploadRouteImport.update({ id: '/upload', path: '/upload', getParentRoute: () => rootRouteImport } as any)
-const MessagesIndexRoute = MessagesIndexRouteImport.update({ id: '/messages/', path: '/messages/', getParentRoute: () => rootRouteImport } as any)
-const MessagesUsernameRoute = MessagesUsernameRouteImport.update({ id: '/messages/$username', path: '/messages/$username', getParentRoute: () => rootRouteImport } as any)
-const UUsernameRoute = UUsernameRouteImport.update({ id: '/u/$username', path: '/u/$username', getParentRoute: () => rootRouteImport } as any)
-const VideoVideoIdRoute = VideoVideoIdRouteImport.update({ id: '/video/$videoId', path: '/video/$videoId', getParentRoute: () => rootRouteImport } as any)
-const YoutubeVideoIdRoute = YoutubeVideoIdRouteImport.update({ id: '/youtube/$videoId', path: '/youtube/$videoId', getParentRoute: () => rootRouteImport } as any)
-const LiveRoute = LiveRouteImport.update({ id: '/live', path: '/live', getParentRoute: () => rootRouteImport } as any)
-const LiveStartRoute = LiveStartRouteImport.update({ id: '/live/start', path: '/live/start', getParentRoute: () => rootRouteImport } as any)
-const LiveStreamIdRoute = LiveStreamIdRouteImport.update({ id: '/live/$streamId', path: '/live/$streamId', getParentRoute: () => rootRouteImport } as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin-login',
+  path: '/admin-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoute = LiveRouteImport.update({
+  id: '/live',
+  path: '/live',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RankingRoute = RankingRouteImport.update({
+  id: '/ranking',
+  path: '/ranking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationsRoute = RecommendationsRouteImport.update({
+  id: '/recommendations',
+  path: '/recommendations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SavedRoute = SavedRouteImport.update({
+  id: '/saved',
+  path: '/saved',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UploadRoute = UploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveStreamIdRoute = LiveStreamIdRouteImport.update({
+  id: '/$streamId',
+  path: '/$streamId',
+  getParentRoute: () => LiveRoute,
+} as any)
+const LiveStartRoute = LiveStartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => LiveRoute,
+} as any)
+const MessagesIndexRoute = MessagesIndexRouteImport.update({
+  id: '/messages/',
+  path: '/messages/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesUsernameRoute = MessagesUsernameRouteImport.update({
+  id: '/messages/$username',
+  path: '/messages/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoVideoIdRoute = VideoVideoIdRouteImport.update({
+  id: '/video/$videoId',
+  path: '/video/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const YoutubeVideoIdRoute = YoutubeVideoIdRouteImport.update({
+  id: '/youtube/$videoId',
+  path: '/youtube/$videoId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/live': typeof LiveRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
+  '/recommendations': typeof RecommendationsRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/live/$streamId': typeof LiveStreamIdRoute
+  '/live/start': typeof LiveStartRoute
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
   '/youtube/$videoId': typeof YoutubeVideoIdRoute
-  '/live': typeof LiveRoute
-  '/live/start': typeof LiveStartRoute
-  '/live/$streamId': typeof LiveStreamIdRoute
   '/messages/': typeof MessagesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -72,19 +158,21 @@ export interface FileRoutesByTo {
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/live': typeof LiveRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
+  '/recommendations': typeof RecommendationsRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/live/$streamId': typeof LiveStreamIdRoute
+  '/live/start': typeof LiveStartRoute
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
   '/youtube/$videoId': typeof YoutubeVideoIdRoute
-  '/live': typeof LiveRoute
-  '/live/start': typeof LiveStartRoute
-  '/live/$streamId': typeof LiveStreamIdRoute
   '/messages': typeof MessagesIndexRoute
 }
 export interface FileRoutesById {
@@ -93,19 +181,21 @@ export interface FileRoutesById {
   '/admin-login': typeof AdminLoginRoute
   '/auth': typeof AuthRoute
   '/friends': typeof FriendsRoute
+  '/live': typeof LiveRouteWithChildren
   '/notifications': typeof NotificationsRoute
   '/ranking': typeof RankingRoute
+  '/recommendations': typeof RecommendationsRoute
   '/saved': typeof SavedRoute
   '/search': typeof SearchRoute
+  '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upload': typeof UploadRoute
+  '/live/$streamId': typeof LiveStreamIdRoute
+  '/live/start': typeof LiveStartRoute
   '/messages/$username': typeof MessagesUsernameRoute
   '/u/$username': typeof UUsernameRoute
   '/video/$videoId': typeof VideoVideoIdRoute
   '/youtube/$videoId': typeof YoutubeVideoIdRoute
-  '/live': typeof LiveRoute
-  '/live/start': typeof LiveStartRoute
-  '/live/$streamId': typeof LiveStreamIdRoute
   '/messages/': typeof MessagesIndexRoute
 }
 export interface FileRouteTypes {
@@ -115,19 +205,21 @@ export interface FileRouteTypes {
     | '/admin-login'
     | '/auth'
     | '/friends'
+    | '/live'
     | '/notifications'
     | '/ranking'
+    | '/recommendations'
     | '/saved'
     | '/search'
+    | '/settings'
     | '/terms'
     | '/upload'
+    | '/live/$streamId'
+    | '/live/start'
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
     | '/youtube/$videoId'
-    | '/live'
-    | '/live/start'
-    | '/live/$streamId'
     | '/messages/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -135,19 +227,21 @@ export interface FileRouteTypes {
     | '/admin-login'
     | '/auth'
     | '/friends'
+    | '/live'
     | '/notifications'
     | '/ranking'
+    | '/recommendations'
     | '/saved'
     | '/search'
+    | '/settings'
     | '/terms'
     | '/upload'
+    | '/live/$streamId'
+    | '/live/start'
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
     | '/youtube/$videoId'
-    | '/live'
-    | '/live/start'
-    | '/live/$streamId'
     | '/messages'
   id:
     | '__root__'
@@ -155,19 +249,21 @@ export interface FileRouteTypes {
     | '/admin-login'
     | '/auth'
     | '/friends'
+    | '/live'
     | '/notifications'
     | '/ranking'
+    | '/recommendations'
     | '/saved'
     | '/search'
+    | '/settings'
     | '/terms'
     | '/upload'
+    | '/live/$streamId'
+    | '/live/start'
     | '/messages/$username'
     | '/u/$username'
     | '/video/$videoId'
     | '/youtube/$videoId'
-    | '/live'
-    | '/live/start'
-    | '/live/$streamId'
     | '/messages/'
   fileRoutesById: FileRoutesById
 }
@@ -176,63 +272,197 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   AuthRoute: typeof AuthRoute
   FriendsRoute: typeof FriendsRoute
+  LiveRoute: typeof LiveRouteWithChildren
   NotificationsRoute: typeof NotificationsRoute
   RankingRoute: typeof RankingRoute
+  RecommendationsRoute: typeof RecommendationsRoute
   SavedRoute: typeof SavedRoute
   SearchRoute: typeof SearchRoute
+  SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
   UploadRoute: typeof UploadRoute
   MessagesUsernameRoute: typeof MessagesUsernameRoute
   UUsernameRoute: typeof UUsernameRoute
   VideoVideoIdRoute: typeof VideoVideoIdRoute
   YoutubeVideoIdRoute: typeof YoutubeVideoIdRoute
-  LiveRoute: typeof LiveRoute
-  LiveStartRoute: typeof LiveStartRoute
-  LiveStreamIdRoute: typeof LiveStreamIdRoute
   MessagesIndexRoute: typeof MessagesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': { id: '/'; path: '/'; fullPath: '/'; preLoaderRoute: typeof IndexRouteImport; parentRoute: typeof rootRouteImport }
-    '/admin-login': { id: '/admin-login'; path: '/admin-login'; fullPath: '/admin-login'; preLoaderRoute: typeof AdminLoginRouteImport; parentRoute: typeof rootRouteImport }
-    '/auth': { id: '/auth'; path: '/auth'; fullPath: '/auth'; preLoaderRoute: typeof AuthRouteImport; parentRoute: typeof rootRouteImport }
-    '/friends': { id: '/friends'; path: '/friends'; fullPath: '/friends'; preLoaderRoute: typeof FriendsRouteImport; parentRoute: typeof rootRouteImport }
-    '/notifications': { id: '/notifications'; path: '/notifications'; fullPath: '/notifications'; preLoaderRoute: typeof NotificationsRouteImport; parentRoute: typeof rootRouteImport }
-    '/ranking': { id: '/ranking'; path: '/ranking'; fullPath: '/ranking'; preLoaderRoute: typeof RankingRouteImport; parentRoute: typeof rootRouteImport }
-    '/saved': { id: '/saved'; path: '/saved'; fullPath: '/saved'; preLoaderRoute: typeof SavedRouteImport; parentRoute: typeof rootRouteImport }
-    '/search': { id: '/search'; path: '/search'; fullPath: '/search'; preLoaderRoute: typeof SearchRouteImport; parentRoute: typeof rootRouteImport }
-    '/terms': { id: '/terms'; path: '/terms'; fullPath: '/terms'; preLoaderRoute: typeof TermsRouteImport; parentRoute: typeof rootRouteImport }
-    '/upload': { id: '/upload'; path: '/upload'; fullPath: '/upload'; preLoaderRoute: typeof UploadRouteImport; parentRoute: typeof rootRouteImport }
-    '/messages/': { id: '/messages/'; path: '/messages'; fullPath: '/messages/'; preLoaderRoute: typeof MessagesIndexRouteImport; parentRoute: typeof rootRouteImport }
-    '/messages/$username': { id: '/messages/$username'; path: '/messages/$username'; fullPath: '/messages/$username'; preLoaderRoute: typeof MessagesUsernameRouteImport; parentRoute: typeof rootRouteImport }
-    '/u/$username': { id: '/u/$username'; path: '/u/$username'; fullPath: '/u/$username'; preLoaderRoute: typeof UUsernameRouteImport; parentRoute: typeof rootRouteImport }
-    '/video/$videoId': { id: '/video/$videoId'; path: '/video/$videoId'; fullPath: '/video/$videoId'; preLoaderRoute: typeof VideoVideoIdRouteImport; parentRoute: typeof rootRouteImport }
-    '/youtube/$videoId': { id: '/youtube/$videoId'; path: '/youtube/$videoId'; fullPath: '/youtube/$videoId'; preLoaderRoute: typeof YoutubeVideoIdRouteImport; parentRoute: typeof rootRouteImport }
-    '/live': { id: '/live'; path: '/live'; fullPath: '/live'; preLoaderRoute: typeof LiveRouteImport; parentRoute: typeof rootRouteImport }
-    '/live/start': { id: '/live/start'; path: '/live/start'; fullPath: '/live/start'; preLoaderRoute: typeof LiveStartRouteImport; parentRoute: typeof rootRouteImport }
-    '/live/$streamId': { id: '/live/$streamId'; path: '/live/$streamId'; fullPath: '/live/$streamId'; preLoaderRoute: typeof LiveStreamIdRouteImport; parentRoute: typeof rootRouteImport }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-login': {
+      id: '/admin-login'
+      path: '/admin-login'
+      fullPath: '/admin-login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live': {
+      id: '/live'
+      path: '/live'
+      fullPath: '/live'
+      preLoaderRoute: typeof LiveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ranking': {
+      id: '/ranking'
+      path: '/ranking'
+      fullPath: '/ranking'
+      preLoaderRoute: typeof RankingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendations': {
+      id: '/recommendations'
+      path: '/recommendations'
+      fullPath: '/recommendations'
+      preLoaderRoute: typeof RecommendationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/saved': {
+      id: '/saved'
+      path: '/saved'
+      fullPath: '/saved'
+      preLoaderRoute: typeof SavedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upload': {
+      id: '/upload'
+      path: '/upload'
+      fullPath: '/upload'
+      preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live/$streamId': {
+      id: '/live/$streamId'
+      path: '/$streamId'
+      fullPath: '/live/$streamId'
+      preLoaderRoute: typeof LiveStreamIdRouteImport
+      parentRoute: typeof LiveRoute
+    }
+    '/live/start': {
+      id: '/live/start'
+      path: '/start'
+      fullPath: '/live/start'
+      preLoaderRoute: typeof LiveStartRouteImport
+      parentRoute: typeof LiveRoute
+    }
+    '/messages/': {
+      id: '/messages/'
+      path: '/messages'
+      fullPath: '/messages/'
+      preLoaderRoute: typeof MessagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages/$username': {
+      id: '/messages/$username'
+      path: '/messages/$username'
+      fullPath: '/messages/$username'
+      preLoaderRoute: typeof MessagesUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video/$videoId': {
+      id: '/video/$videoId'
+      path: '/video/$videoId'
+      fullPath: '/video/$videoId'
+      preLoaderRoute: typeof VideoVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/youtube/$videoId': {
+      id: '/youtube/$videoId'
+      path: '/youtube/$videoId'
+      fullPath: '/youtube/$videoId'
+      preLoaderRoute: typeof YoutubeVideoIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface LiveRouteChildren {
+  LiveStreamIdRoute: typeof LiveStreamIdRoute
+  LiveStartRoute: typeof LiveStartRoute
+}
+
+const LiveRouteChildren: LiveRouteChildren = {
+  LiveStreamIdRoute: LiveStreamIdRoute,
+  LiveStartRoute: LiveStartRoute,
+}
+
+const LiveRouteWithChildren = LiveRoute._addFileChildren(LiveRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminLoginRoute: AdminLoginRoute,
   AuthRoute: AuthRoute,
   FriendsRoute: FriendsRoute,
+  LiveRoute: LiveRouteWithChildren,
   NotificationsRoute: NotificationsRoute,
   RankingRoute: RankingRoute,
+  RecommendationsRoute: RecommendationsRoute,
   SavedRoute: SavedRoute,
   SearchRoute: SearchRoute,
+  SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
   UploadRoute: UploadRoute,
   MessagesUsernameRoute: MessagesUsernameRoute,
   UUsernameRoute: UUsernameRoute,
   VideoVideoIdRoute: VideoVideoIdRoute,
   YoutubeVideoIdRoute: YoutubeVideoIdRoute,
-  LiveRoute: LiveRoute,
-  LiveStartRoute: LiveStartRoute,
-  LiveStreamIdRoute: LiveStreamIdRoute,
   MessagesIndexRoute: MessagesIndexRoute,
 }
 export const routeTree = rootRouteImport
